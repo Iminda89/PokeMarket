@@ -1,0 +1,147 @@
+/* Variables de color Pokémon */
+:root {
+    --poke-red: #ff1f1f;
+    --poke-blue: #3b4cca;
+    --poke-yellow: #ffde00;
+    --poke-dark-blue: #0a285f;
+    --fade-speed: 0.5s;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* --- Animación de Desaparición para Compras --- */
+.fade-out-card {
+    transition: opacity var(--fade-speed) ease, transform var(--fade-speed) ease;
+}
+
+.fade-out-card.removing {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    pointer-events: none; /* Evita clics extra mientras desaparece */
+}
+
+/* --- Efecto en las cartas de la tienda --- */
+.card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: none;
+    border-radius: 15px;
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15) !important;
+    cursor: pointer;
+}
+
+/* Estilo para los botones */
+.btn-primary {
+    background-color: var(--poke-blue);
+    border: none;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background-color: var(--poke-dark-blue);
+}
+
+/* Navbar con degradado suave */
+.navbar {
+    background: linear-gradient(90deg, #1a1a1a 0%, #333333 100%) !important;
+}
+
+/* Logo con animación */
+.navbar-brand:hover {
+    filter: brightness(1.2);
+}
+
+/* --- Estilos específicos para Bildumak (Colecciones) --- */
+
+.card-hover {
+    position: relative;
+    border-radius: 15px !important;
+    overflow: hidden; /* Asegura que el zoom no se salga */
+}
+
+/* Efecto de zoom en la imagen de fondo del Set */
+.card-hover img {
+    transition: transform 0.5s ease;
+}
+
+.card-hover:hover img {
+    transform: scale(1.1); 
+}
+
+/* Estilo para las cartas individuales del catálogo (SetDetail) */
+.card-pokemon {
+    background-color: #ffffff;
+    border-radius: 12px !important;
+    padding: 10px;
+}
+
+.card-pokemon img {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+}
+
+.card-pokemon:hover img {
+    transform: scale(1.08) translateY(-5px);
+    filter: drop-shadow(0 12px 20px rgba(0,0,0,0.2));
+}
+
+/* Etiquetas de rareza y tipo */
+.very-small {
+    font-size: 0.6rem !important;
+    letter-spacing: 0.5px;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-weight: 700;
+}
+
+/* Precio destacado */
+.price-tag {
+    color: var(--poke-blue);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* --- Estilos para los Filtros y Selectores --- */
+
+.form-label.small {
+    color: var(--poke-dark-blue);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.form-control, .form-select {
+    border-radius: 10px !important;
+    padding: 10px 15px;
+    border: 1px solid #e0e0e0 !important;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--poke-blue) !important;
+    box-shadow: 0 0 0 0.25rem rgba(59, 76, 202, 0.1) !important;
+    outline: none;
+}
+
+/* Ajuste para el Breadcrumb */
+.breadcrumb-item a {
+    color: var(--poke-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+/* Animación suave para cuando las cartas cambian de posición */
+.row {
+    transition: all 0.5s ease-in-out;
+}
