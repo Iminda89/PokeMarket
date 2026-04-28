@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            // Añadimos un campo nullable (puede estar vacío) para la foto
-            $table->string('avatar')->nullable()->after('email');
+            // Cambiamos 'avatar' por 'avatar_url' para que coincida con el Modelo
+            $table->string('avatar_url')->nullable()->after('email');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('avatar');
+            $table->dropColumn('avatar_url');
         });
     }
 };

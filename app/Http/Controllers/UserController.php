@@ -5,9 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Listing;
 
 class UserController extends Controller
 {
+    /**
+     * Devuelve los datos básicos del usuario y estadísticas rápidas.
+     */
     public function getUserData()
     {
         $user = Auth::user();
@@ -15,53 +19,76 @@ class UserController extends Controller
         return response()->json([
             'name' => $user->name,
             'email' => $user->email,
-            'avatar_url' => $user->avatar ? \Storage::url($user->avatar) : '/images/default-avatar.png',
-            // ESTADÍSTICAS REALES:
+            'balance' => $user->balance,
+            // Usamos el atributo del modelo que ya gestiona la lógica del default
+            'avatar_url' => $user->avatar_url, 
+            'level' => $user->level,
+            'xp' => $user->xp,
+            'xp_next_level' => $user->xp_next_level,
             'stats' => [
-                'totalCards' => $user->cards()->sum('quantity'), // Suma todas las cantidades
-                'forSale' => $user->cards()->where('is_for_sale', true)->count(), // Solo las que están a la venta
+                'totalCards' => (int) $user->cards()->sum('quantity'),
+                'activeListings' => Listing::where('user_id', $user->id)->where('is_sold', false)->count(),
             ]
         ]);
     }
 
+    /**
+     * Procesa la subida del avatar.
+     */
     public function updateAvatar(Request $request)
     {
-        // 1. Validamos que sea una imagen válida
         $request->validate([
-            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // máx 2MB
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $user = Auth::user();
 
-        // 2. Si ya tenía una foto, borramos la antigua para no llenar el disco
-        if ($user->avatar) {
-            Storage::delete($user->avatar);
+        // Borrar avatar antiguo si existe (usando el valor crudo de la DB)
+        if ($user->getRawOriginal('avatar_url')) {
+            Storage::disk('public')->delete($user->getRawOriginal('avatar_url'));
         }
 
-        // 3. Guardamos la nueva imagen en la carpeta 'avatars' dentro de 'public'
+        // Guardar el nuevo
         $path = $request->file('avatar')->store('avatars', 'public');
 
-        // 4. Actualizamos la base de datos
-        $user->update(['avatar' => $path]);
+        // Actualizar con el nombre de columna correcto
+        $user->update(['avatar_url' => $path]);
 
         return response()->json([
-            'message' => 'Profile picture updated successfully!',
+            'message' => 'Profila ongi eguneratu da!',
             'avatar_url' => Storage::url($path),
         ]);
     }
-    public function getUserProfile(Request $request) {
-        $user = $request->user();
 
+    /**
+     * Devuelve el perfil completo y las estadísticas.
+     * Este será el endpoint principal para React.
+     */
+    public function getUserProfile(Request $request) {
+        $user = $request->user(); // Sanctum ya pilla al usuario aquí si el middleware está puesto
+
+        if (!$user) {
+            return response()->json(['message' => 'Saioa hasi gabe'], 401);
+        }
+
+        // Estadísticas optimizadas
+        $totalCards = (int) \DB::table('collections')->where('user_id', $user->id)->sum('quantity');
+        $activeListings = \App\Models\Listing::where('user_id', $user->id)
+                                            ->where('is_sold', false)
+                                            ->count();
+
+        // Devolvemos el usuario en la raíz para que React lo asimile directamente
         return response()->json([
-            'user' => $user,
-            'stats' => [
-                'total_cards' => $user->cards()->sum('quantity'),
-                // Contamos solo los anuncios del usuario que NO están vendidos
-                'active_listings' => \App\Models\Listing::where('user_id', $user->id)
-                                                    ->where('is_sold', false)
-                                                    ->count(),
-                'collection_value' => $user->cards->sum(fn($c) => $c->price * $c->pivot->quantity),
-            ]
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'balance' => (float) $user->balance, // Forzamos float para evitar strings
+            'avatar_url' => $user->avatar_url,
+            'level' => $user->level,
+            'xp' => $user->xp,
+            'xp_next_level' => $user->xp_next_level,
+            'total_cards' => $totalCards,
+            'active_listings' => $activeListings,
         ]);
     }
 }

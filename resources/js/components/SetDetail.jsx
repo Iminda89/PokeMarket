@@ -1,92 +1,145 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Row, Col, Form, Card, Badge, Breadcrumb } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-
+import { useParams, Link } from 'react-router-dom';
+import { Container, Row, Col, Form, Card, Badge, Breadcrumb, Spinner } from 'react-bootstrap';
+import axios from 'axios';
 
 const SetDetail = () => {
     const { id } = useParams();
     const [setData, setSetData] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortBy, setSortBy] = useState("default"); // Estado para la ordenación
+    const [sortBy, setSortBy] = useState("default");
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch(`/api/sets/${id}`)
-            .then(res => res.json())
-            .then(data => setSetData(data));
+        axios.get(`/api/sets/${id}`)
+            .then(res => {
+                setSetData(res.data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Errorea datuak kargatzean", err);
+                setLoading(false);
+            });
     }, [id]);
 
-    if (!setData) return <Container className="py-5 text-center">Kargatzen...</Container>;
+    if (loading) {
+        return (
+            <Container className="py-5 text-center vh-100 d-flex flex-column justify-content-center align-items-center bg-pm-dark text-white">
+                <Spinner animation="border" variant="warning" />
+                <p className="mt-3 fw-bold text-uppercase">Kartak bilatzen...</p>
+            </Container>
+        );
+    }
 
-    // 1. Primero filtramos por nombre
-    let filteredCards = setData.cards.filter(card => 
+    if (!setData) return <Container className="py-5 text-center text-white text-uppercase fw-black">Bilduma ez da aurkitu.</Container>;
+
+    let filteredCards = (setData.cards || []).filter(card => 
         card.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // 2. Luego ordenamos la lista filtrada
     if (sortBy === "price-asc") {
-    filteredCards.sort((a, b) => a.price - b.price);
+        filteredCards.sort((a, b) => a.price - b.price);
     } else if (sortBy === "price-desc") {
         filteredCards.sort((a, b) => b.price - a.price);
     }
 
     return (
-        <Container className="py-4">
-            {/* 1. CORRECCIÓN: Volvemos a poner el Breadcrumb y el título del SET */}
-            <Breadcrumb>
+        <Container className="py-4 text-white">
+            <style>{`
+                .breadcrumb-amara .breadcrumb-item + .breadcrumb-item::before { color: #444; }
+                .breadcrumb-amara a { color: #aaaaaa; text-decoration: none; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; }
+                .breadcrumb-amara .active { color: #facc15; font-weight: 900; text-transform: uppercase; font-size: 0.75rem; }
+                
+                .set-header-title { font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
+                .text-yellow { color: #facc15 !important; }
+                .text-amara-muted { color: #aaaaaa !important; }
+                
+                .card-pokemon-dark { 
+                    background: #111; 
+                    border: 1px solid #222; 
+                    border-radius: 15px; 
+                    transition: 0.3s;
+                }
+                .card-pokemon-dark:hover { 
+                    border-color: #facc15; 
+                    transform: translateY(-5px); 
+                }
+                
+                .form-control-amara { 
+                    background: #1a1a1a !important; 
+                    border: 1px solid #333 !important; 
+                    color: white !important; 
+                    border-radius: 8px; 
+                }
+                .form-control-amara:focus { border-color: #facc15; box-shadow: none; }
+                
+                /* CORRECCIÓN DEL PLACEHOLDER */
+                .form-control-amara::placeholder { 
+                    color: #999 !important; 
+                    opacity: 1; 
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                }
+
+                .card-img-wrapper { background: #1a1a1a; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+            `}</style>
+
+            <Breadcrumb className="breadcrumb-amara mb-4">
                 <Breadcrumb.Item linkAs={Link} linkProps={{to: "/bildumak"}}>Bildumak</Breadcrumb.Item>
                 <Breadcrumb.Item active>{setData.name}</Breadcrumb.Item>
             </Breadcrumb>
 
-            <div className="d-flex flex-wrap justify-content-between align-items-end mb-4 gap-3">
+            <div className="d-flex flex-wrap justify-content-between align-items-end mb-5 gap-3">
                 <div>
-                    <h1 className="fw-bold mb-0 text-uppercase">{setData.name} Singles</h1>
-                    <p className="text-muted mb-0">{filteredCards.length} karta aurkituta</p>
+                    <h1 className="set-header-title fs-2 mb-0">{setData.name} <span className="text-yellow">SINGLES</span></h1>
+                    <p className="text-amara-muted mb-0 small fw-bold uppercase">{filteredCards.length} KARTA AURKITUTA</p>
                 </div>
                 
                 <div className="d-flex gap-2 flex-grow-1 justify-content-end">
-                    {/* BUSCADOR */}
-                    <div style={{ maxWidth: '250px' }}>
-                        <Form.Label className="small fw-bold text-muted">Bilatu:</Form.Label>
+                    <div style={{ maxWidth: '200px' }}>
                         <Form.Control 
                             type="text" 
-                            placeholder="Adib. Pikachu..." 
-                            className="border-0 shadow-sm"
+                            placeholder="BILATU..." 
+                            className="form-control-amara form-control-sm"
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
-                    {/* SELECTOR DE ORDENACIÓN */}
-                    <div style={{ maxWidth: '200px' }}>
-                        <Form.Label className="small fw-bold text-muted">Ordenatu:</Form.Label>
+                    <div style={{ maxWidth: '180px' }}>
                         <Form.Select 
-                            className="border-0 shadow-sm"
+                            className="form-control-amara form-select-sm"
                             onChange={(e) => setSortBy(e.target.value)}
                         >
-                            <option value="default">Guztiak</option>
-                            <option value="price-asc">Merkeenak lehenago</option>
-                            <option value="price-desc">Garestienak lehenago</option>
+                            <option value="default" style={{background: '#1a1a1a'}}>GUZTIAK</option>
+                            <option value="price-asc" style={{background: '#1a1a1a'}}>PREZIOA: TXIKIENA</option>
+                            <option value="price-desc" style={{background: '#1a1a1a'}}>PREZIOA: HANDIENA</option>
                         </Form.Select>
                     </div>
                 </div>
             </div>
 
-            <Row>
+            <Row className="g-3">
                 {filteredCards.map(card => (
-                    <Col key={card.id} xs={6} md={3} lg={2} className="mb-4">
+                    <Col key={card.id} xs={6} sm={4} md={3} lg={2}>
                         <Link to={`/karta/${card.id}`} className="text-decoration-none">
-                            <Card className="h-100 border-0 shadow-sm text-center card-pokemon">
-                                <div className="p-2">
-                                    <Card.Img variant="top" src={card.image_url} alt={card.name} />
+                            <Card className="h-100 card-pokemon-dark p-2 shadow-lg">
+                                <div className="card-img-wrapper">
+                                    <Card.Img 
+                                        variant="top" 
+                                        src={card.image_url || null}
+                                        alt={card.name} 
+                                        loading="lazy"
+                                        style={{ filter: 'drop-shadow(0 5px 10px rgba(0,0,0,0.5))' }}
+                                    />
                                 </div>
-                                <Card.Body className="p-2 pt-0">
-                                    <Card.Title className="small fw-bold mb-1 text-dark">
+                                <Card.Body className="p-1 text-center">
+                                    <Card.Title className="small fw-black text-uppercase text-white text-truncate mb-1">
                                         {card.name}
                                     </Card.Title>
-                                    <Badge bg="secondary" className="mb-2 very-small">
+                                    <div className="text-amara-muted x-small mb-2 fw-bold italic" style={{ fontSize: '0.65rem' }}>
                                         {card.rarity}
-                                    </Badge>
-                                    <div className="price-tag text-primary fw-bold">
+                                    </div>
+                                    <div className="text-yellow fw-black fs-6 border-top border-dark pt-2">
                                         {card.price} €
                                     </div>
                                 </Card.Body>

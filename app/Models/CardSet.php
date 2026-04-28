@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CardSet extends Model
 {
     // Esto permite que el Seeder guarde datos en estos campos
-    protected $fillable = ['name', 'series', 'release_date', 'logo_url'];
+    protected $fillable = ['name', 'series', 'release_date', 'logo_url', 'is_active'];
 
     // Relación: Un Set tiene muchas cartas
     public function cards()

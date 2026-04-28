@@ -1,6 +1,9 @@
-import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
-import { Container, Navbar, Nav, Button, NavDropdown, Image } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
+import { Container, Navbar, Nav, Button, Offcanvas } from 'react-bootstrap';
+import axios from 'axios';
+
+// Componentes
 import ContactForm from './ContactForm';
 import Footer from './Footer';
 import { LoginForm, RegisterForm } from './Auth';
@@ -8,106 +11,190 @@ import Home from './Home';
 import Shop from './Shop';
 import Collections from './Collections';
 import Profile from './Profile'; 
-import { UserProvider, useUser } from "./UserContext";
 import SetDetail from './SetDetail'; 
 import CardDetail from './CardDetail';
-import { Navigate } from 'react-router-dom'; // Añade Navigate a tus imports
-import axios from 'axios';
+import AdminDashboard from './AdminDashboard';
+import AdminUsers from './AdminUsers';
+import AdminSets from './AdminSets';
 
-axios.defaults.withCredentials = true;
-// Si usas el mismo puerto para ambos, quita el 'http://localhost:8000'
-// para que use rutas relativas.
-axios.defaults.baseURL = '/'; 
-axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-axios.defaults.headers.common['Accept'] = 'application/json';
+// Contexto
+import { UserProvider, useUser } from "./UserContext";
 
 function AppContent() {
-    const { user, loading } = useUser();
+    const { user, setUser, loading, logout } = useUser();
+    const location = useLocation();
+    
+    // Estado para el menú lateral móvil (Hamburguesa)
+    const [showOffcanvas, setShowOffcanvas] = useState(false);
+    const handleCloseOffcanvas = () => setShowOffcanvas(false);
+    const handleShowOffcanvas = () => setShowOffcanvas(true);
+
+    if (loading) {
+        return (
+            <div className="vh-100 d-flex justify-content-center align-items-center bg-pm-dark text-white">
+                <span>Kargatzen...</span>
+            </div>
+        );
+    }
+
+    const isAuthenticated = user && user.id;
+    
+    // Comprobamos si el usuario es administrador (por el rol o por el campo is_admin)
+    const isAdmin = isAuthenticated && (
+        user.role === 'admin' || 
+        user.is_admin === 1 || 
+        user.is_admin === true || 
+        user.email === 'admin@admin.com'
+    );
+
+    // Helper para marcar el enlace activo (blanco puro si activo, gris suave si no)
+    const getActiveClass = (path) => location.pathname === path ? 'text-white' : 'text-secondary';
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-light">
-            <Navbar bg="dark" variant="dark" expand="lg" className="px-4 shadow">
+        <div className="d-flex flex-column min-vh-100 bg-pm-dark text-white font-custom">
+            
+            {/* --- NAVBAR ESTILO AMARA --- */}
+            <Navbar expand="lg" variant="dark" className="px-lg-5 py-4 border-bottom border-dark sticky-top bg-pm-dark">
                 <Container fluid>
-                    <Navbar.Brand as={Link} to="/">PokeMarket 🃏</Navbar.Brand>
-                    <Navbar.Toggle aria-controls="basic-navbar-nav" />
-                    <Navbar.Collapse id="basic-navbar-nav">
-                        <Nav className="me-auto">
-                            <Nav.Link as={Link} to="/">Hasiera</Nav.Link>
-                            <Nav.Link as={Link} to="/denda">Denda</Nav.Link>
-                            <Nav.Link as={Link} to="/bildumak">Bildumak</Nav.Link>
-                            <Nav.Link as={Link} to="/kontaktua">Kontaktua</Nav.Link>
+                    
+                    {/* IZQUIERDA: Logo y NavLinks (Escritorio) */}
+                    <div className="d-flex align-items-center gap-5">
+                        <Navbar.Brand as={Link} to="/" className="fw-black fs-3 logo-text text-yellow">
+                            POKEMARKET <span className="text-white fw-light">amara</span>
+                        </Navbar.Brand>
+                        
+                        <Nav className="d-none d-lg-flex gap-4 fs-7 text-uppercase fw-bold letter-spacing-1">
+                            <Nav.Link as={Link} to="/denda" className={`nav-link-amara p-0 ${getActiveClass('/denda')}`}>DENDA</Nav.Link>
+                            <Nav.Link as={Link} to="/bildumak" className={`nav-link-amara p-0 ${getActiveClass('/bildumak')}`}>BILDUMAK</Nav.Link>
+                            <Nav.Link as={Link} to="/kontaktua" className={`nav-link-amara p-0 ${getActiveClass('/kontaktua')}`}>KONTAKTUA</Nav.Link>
                         </Nav>
-                        <Nav className="gap-2 align-items-center">
-                            {loading ? (
-                                <span className="text-light small">Kargatzen...</span>
-                            ) : user ? (
-                                <NavDropdown 
-                                    title={
-                                        <div className="d-flex align-items-center gap-2">
-                                            <Image 
-                                                src={user.avatar_url || '/default-avatar.png'} 
-                                                roundedCircle 
-                                                style={{ width: '35px', height: '35px', objectFit: 'cover', border: '2px solid white' }}
-                                            />
-                                            <span className="text-light">{user.name}</span>
-                                        </div>
-                                    } 
-                                    id="user-nav-dropdown" 
-                                    align="end"
+                    </div>
+
+                    {/* DERECHA: Perfil / Admin / Hamburguesa */}
+                    <div className="d-flex align-items-center gap-3">
+                        
+                        {isAuthenticated ? (
+                            <div className="d-none d-lg-flex align-items-center gap-3">
+                                {isAdmin && (
+                                    <Link to="/admin" className="btn-admin-pill text-decoration-none">
+                                        ADMIN PANELA
+                                    </Link>
+                                )}
+                                
+                                <Link to="/perfila" className="nav-link-amara text-yellow italic fw-black text-decoration-none border border-secondary border-opacity-25 px-3 py-1 rounded-pill">
+                                    PERFILA: {user?.name?.toUpperCase()}
+                                </Link>
+                                <Button 
+                                    variant="outline-secondary" 
+                                    size="sm" 
+                                    onClick={logout}
+                                    className="text-white border-0"
                                 >
-                                    <NavDropdown.Item as={Link} to="/perfila">Nire Kontua</NavDropdown.Item>
-                                    <NavDropdown.Divider />
-                                    <NavDropdown.Item onClick={async () => {
-                                        try {
-                                            await axios.post('/logout'); // Axios ya sabe qué hacer
-                                            window.location.href = "/";
-                                        } catch (err) {
-                                            // Si falla el POST (por CSRF), forzamos salida
-                                            window.location.href = "/";
-                                        }
-                                    }} className="text-danger">
-                                        Saioa itxi
-                                    </NavDropdown.Item>
-                                </NavDropdown>
-                            ) : (
-                                <>
-                                    <Button as={Link} to="/login" variant="outline-light" size="sm">Hasi saioa</Button>
-                                    <Button as={Link} to="/register" variant="primary" size="sm">Erregistratu</Button>
-                                </>
-                            )}
-                        </Nav>
-                    </Navbar.Collapse>
+                                    Irten
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="d-none d-lg-flex gap-3">
+                                <Link to="/login" className="btn-yellow-amara text-decoration-none">HASI SAIOA</Link>
+                            </div>
+                        )}
+
+                        {/* Hamburguesa Móvil */}
+                        <Navbar.Toggle 
+                            aria-controls="offcanvasNavbar" 
+                            onClick={handleShowOffcanvas} 
+                            className="border-0 shadow-none custom-toggler"
+                        />
+                    </div>
                 </Container>
             </Navbar>
 
+            {/* --- MENÚ LATERAL (OFFCANVAS) --- */}
+            <Offcanvas 
+                show={showOffcanvas} 
+                onHide={handleCloseOffcanvas} 
+                placement="end" 
+                className="bg-pm-dark text-white border-start border-dark"
+            >
+                <Offcanvas.Header closeButton closeVariant="white" className="border-bottom border-dark">
+                    <Offcanvas.Title className="fw-black text-yellow">POKEMARKET</Offcanvas.Title>
+                </Offcanvas.Header>
+                <Offcanvas.Body className="d-flex flex-column h-100">
+                    
+                    <Nav className="flex-column gap-4 fs-2 fw-black text-uppercase mb-auto">
+                        <Nav.Link as={Link} to="/denda" onClick={handleCloseOffcanvas} className="text-white p-0">DENDA</Nav.Link>
+                        <Nav.Link as={Link} to="/bildumak" onClick={handleCloseOffcanvas} className="text-white p-0">BILDUMAK</Nav.Link>
+                        <Nav.Link as={Link} to="/kontaktua" onClick={handleCloseOffcanvas} className="text-white p-0">KONTAKTUA</Nav.Link>
+                    </Nav>
+                    
+                    <div className="d-flex flex-column gap-3 pt-4 border-top border-dark">
+                        {isAuthenticated ? (
+                            <>
+                                {isAdmin && (
+                                    <Link 
+                                        to="/admin" 
+                                        onClick={handleCloseOffcanvas}
+                                        className="btn-admin-pill-mobile text-center py-3 fw-bold text-decoration-none"
+                                    >
+                                        ADMIN PANELA
+                                    </Link>
+                                )}
+                                <Link 
+                                    to="/perfila" 
+                                    onClick={handleCloseOffcanvas}
+                                    className="btn-profile-mobile text-center py-3 fw-black italic text-yellow text-decoration-none border border-secondary border-opacity-25 rounded"
+                                >
+                                    PERFILA ({user?.name?.toUpperCase()})
+                                </Link>
+                                <Button 
+                                    variant="danger" 
+                                    onClick={() => {
+                                        logout();
+                                        handleCloseOffcanvas();
+                                    }} 
+                                    className="w-100 py-2 mt-2 fw-bold"
+                                >
+                                    Irten
+                                </Button>
+                            </>
+                        ) : (
+                            <Link to="/login" onClick={handleCloseOffcanvas} className="btn-yellow-amara text-center justify-content-center text-decoration-none">
+                                HASI SAIOA
+                            </Link>
+                        )}
+                    </div>
+                </Offcanvas.Body>
+            </Offcanvas>
+
+            {/* --- CONTENIDO --- */}
             <main className="flex-grow-1 py-5">
                 <Container>
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/denda" element={<Shop />} />
-                        
-                        {/* PROTECCIÓN: Si ya hay user, el Login y Register te mandan a /perfila */}
-                        <Route path="/login" element={user ? <Navigate to="/perfila" /> : <LoginForm />} />
-                        <Route path="/register" element={user ? <Navigate to="/perfila" /> : <RegisterForm />} />
-                        
+                        <Route path="/login" element={isAuthenticated ? <Navigate to="/perfila" /> : <LoginForm />} />
+                        <Route path="/register" element={isAuthenticated ? <Navigate to="/perfila" /> : <RegisterForm />} />
                         <Route path="/bildumak" element={<Collections />} />
                         <Route path="/kontaktua" element={<ContactForm />} />
-                        
-                        {/* PROTECCIÓN: Si no hay user, el Perfil te manda al Login */}
-                        <Route path="/perfila" element={user ? <Profile /> : <Navigate to="/login" />} />
-                        
+                        <Route path="/perfila" element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} />
                         <Route path="/bildumak/:id" element={<SetDetail />} />
-                        {/* Asegúrate de que aquí la ruta coincida con la que usas en el Link de Sets (karta o card) */}
                         <Route path="/karta/:id" element={<CardDetail />} />
+                        
+                        {/* Rutas de administración protegidas */}
+                        <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Navigate to="/" />} />
+                        <Route path="/admin/users" element={isAdmin ? <AdminUsers /> : <Navigate to="/" />} />
+                        <Route path="/admin/sets" element={isAdmin ? <AdminSets /> : <Navigate to="/" />} />
+                        
+                        <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Container>
             </main>
+
             <Footer />
         </div>
     );
 }
 
-// 2. EL COMPONENTE PRINCIPAL SOLO ENVUELVE
 function App() {
     return (
         <UserProvider>

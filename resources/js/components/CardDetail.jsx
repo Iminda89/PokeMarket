@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Container, Row, Col, Spinner, Button } from 'react-bootstrap'; // Añadido Spinner
+import { Container, Row, Col, Spinner, Button, Card, Badge } from 'react-bootstrap';
 import { useUser } from './UserContext';
 
 const CardDetail = () => {
@@ -11,152 +11,161 @@ const CardDetail = () => {
 
     const [card, setCard] = useState(null);
     const [error, setError] = useState(false);
-    const [loading, setLoading] = useState(true); // Estado para controlar la carga
+    const [loading, setLoading] = useState(true);
+    const [isAdding, setIsAdding] = useState(false);
 
-    // Función para añadir/quitar de la colección
-    const handleCollection = () => {
+    useEffect(() => {
+        let isMounted = true;
+        setLoading(true);
+
+        axios.get(`/api/cards/${id}`)
+            .then(res => {
+                if (isMounted) setCard(res.data);
+            })
+            .catch(err => {
+                console.error("Errorea karga prozesuan:", err);
+                if (isMounted) setError(true);
+            })
+            .finally(() => {
+                if (isMounted) setLoading(false);
+            });
+
+        return () => { isMounted = false; };
+    }, [id]);
+
+    const handleCollection = async () => {
         if (!user) {
-            alert("Mesedez, hasi saioa kartak gehitzeko.");
             navigate('/login');
             return;
         }
 
-        axios.post(`/api/cards/${id}/collection`)
-            .then(res => {
-                alert(res.data.message);
-            })
-            .catch(err => {
-                console.error(err);
-                if (err.response?.status === 401) {
-                    // Si llegamos aquí con un 401, es que Laravel ha perdido nuestra sesión
-                    alert("Zure saioa iraungi da. Mesedez, hasi saioa berriro.");
-                    navigate('/login');
-                } else {
-                    alert("Errorea karta gehitzean.");
-                }
-            });
+        setIsAdding(true);
+        try {
+            await axios.get('/sanctum/csrf-cookie');
+            const res = await axios.post(`/api/cards/${id}/collection`);
+            alert(res.data.message || "Karta bildumara gehitu da!");
+        } catch (err) {
+            if (err.response?.status === 401) {
+                alert("Saioa iraungi da. Hasi saioa berriro.");
+                navigate('/login');
+            } else {
+                alert("Errorea gertatu da karta gehitzean.");
+            }
+        } finally {
+            setIsAdding(false);
+        }
     };
 
-    useEffect(() => {
-        setLoading(true);
-        axios.get(`/api/cards/${id}`, {
-            headers: { 'Accept': 'application/json' }
-        })
-        .then(res => {
-            if (typeof res.data === 'string') {
-                console.error("Error: Recibido HTML en lugar de JSON.");
-                setError(true);
-            } else {
-                setCard(res.data);
-            }
-        })
-        .catch(err => {
-            console.error("Error en la petición:", err);
-            setError(true);
-        })
-        .finally(() => {
-            setLoading(false);
-        });
-    }, [id]);
+    if (loading) return (
+        <Container className="py-5 text-center vh-100 d-flex flex-column justify-content-center align-items-center text-white">
+            <Spinner animation="border" variant="warning" />
+            <p className="mt-3 fw-bold text-uppercase">Datuak kargatzen...</p>
+        </Container>
+    );
 
-    // 1. Estado de carga (Spinner para que no se vea la pantalla vacía)
-    if (loading) {
-        return (
-            <Container className="py-5 text-center">
-                <Spinner animation="border" variant="primary" />
-                <p className="mt-3 fw-bold">Karta kargatzen...</p>
-            </Container>
-        );
-    }
+    if (error || !card) return (
+        <Container className="py-5 text-center text-white">
+            <h3 className="fw-black text-uppercase">Karta ez da aurkitu</h3>
+            <Button onClick={() => navigate(-1)} className="btn-yellow-amara mt-3">ATZERA JOAN</Button>
+        </Container>
+    );
 
-    // 2. Estado de error
-    if (error || !card) {
-        return (
-            <Container className="py-5 text-center">
-                <h2 className="text-danger">Akatsa: Ezin izan da karta kargatu</h2>
-                <Button onClick={() => navigate(-1)} variant="primary" className="mt-3">Atzera joan</Button>
-            </Container>
-        );
-    }
-
-    // 3. Variables calculadas de forma segura
-    const cardNumber = card.number ? card.number.split('/')[0] : '?';
-    const prices = card.psa_prices || [];
+    const cardNumber = card.number?.includes('/') ? card.number.split('/')[0] : (card.number || id);
 
     return (
-        <Container className="py-5 bg-white shadow-sm rounded mt-4">
-            {/* Cabecera */}
-            <div className="mb-4 border-bottom pb-2 text-start">
-                <h2 className="text-primary fw-bold">
-                    {card.name} #{cardNumber} 
-                    <span className="text-muted ms-3 fs-5 text-decoration-underline cursor-pointer">
-                        {card.collection || 'Bilduma ezezaguna'}
-                    </span>
-                </h2>
-            </div>
+        <Container className="py-5 text-white">
+            <style>{`
+                .detail-card-amara { background: #111; border: 1px solid #222; border-radius: 30px; overflow: hidden; }
+                .img-detail-container { background: #1a1a1a; padding: 40px; display: flex; align-items: center; justify-content: center; border-right: 1px solid #222; }
+                .text-yellow { color: #facc15 !important; }
+                .text-amara-muted { color: #aaaaaa !important; }
+                .graph-box { background: #000; border: 1px solid #222; border-radius: 20px; }
+                .psa-price-card { background: #1a1a1a; border: 1px solid #333; border-radius: 15px; transition: 0.3s; }
+                .psa-price-card:hover { border-color: #facc15; }
+                .btn-outline-amara { border: 2px solid #333; color: white; font-weight: 800; border-radius: 12px; transition: 0.3s; }
+                .btn-outline-amara:hover { border-color: #facc15; color: #facc15; }
+            `}</style>
 
-            <Row className="mb-5 align-items-center">
-                {/* Columna Izquierda: Imagen y Botones */}
-                <Col md={4} className="text-center">
-                    <img 
-                        src={card.image_url || 'https://via.placeholder.com/400x560?text=No+Image'} 
-                        alt={card.name} 
-                        className="img-fluid rounded shadow mb-3" 
-                        style={{ maxHeight: '400px', width: 'auto' }} 
-                    />
-                    <div className="d-grid gap-2 d-md-flex justify-content-md-center">
-                        <Button onClick={handleCollection} variant="primary" size="sm" className="fw-bold">
-                            + Colección
-                        </Button>
-                        <Button variant="info" size="sm" className="text-white fw-bold">
-                            + Deseos
-                        </Button>
-                        <Button variant="dark" size="sm" className="fw-bold">
-                            Comprarlo
-                        </Button>
-                    </div>
-                </Col>
+            <Card className="detail-card-amara shadow-lg border-0">
+                <Row className="g-0">
+                    {/* Columna Imagen */}
+                    <Col md={5} className="img-detail-container">
+                        <img 
+                            src={card.image_url || '/placeholder-card.png'} 
+                            alt={card.name} 
+                            className="img-fluid rounded shadow-lg"
+                            style={{ 
+                                maxHeight: '550px', 
+                                filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.8))' 
+                            }} 
+                        />
+                    </Col>
 
-                {/* Columna Derecha: Gráfico Simulado */}
-                <Col md={8}>
-                    <div className="border rounded p-3 bg-light h-100">
-                        <div className="d-flex gap-3 mb-3 small fw-bold text-muted">
-                            <span>Zoom</span> <span className="text-primary">6m</span> <span>1y</span> <span className="bg-primary text-white px-2 rounded">5y</span> <span>All</span>
+                    {/* Columna Información */}
+                    <Col md={7} className="p-4 p-lg-5 d-flex flex-column">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                            <Badge bg="dark" className="border border-secondary px-3 py-2 text-yellow">
+                                #{cardNumber}
+                            </Badge>
+                            <span className="text-amara-muted small fw-black text-uppercase italic">
+                                {card.rarity || 'Common'}
+                            </span>
                         </div>
-                        <div className="position-relative" style={{ height: '250px', borderBottom: '2px solid #ccc' }}>
-                            <svg viewBox="0 0 500 100" className="w-100 h-100">
-                                <path d="M0,80 Q50,20 100,70 T200,40 T300,60 T400,20 T500,50" fill="none" stroke="#007bff" strokeWidth="2" />
+                        
+                        <h1 className="display-4 fw-black text-white text-uppercase mb-1">
+                            {card.name}
+                        </h1>
+                        <p className="text-yellow fs-5 fw-bold mb-4 italic">
+                            {card.card_set?.name || 'Bilduma Ezezaguna'}
+                        </p>
+
+                        {/* Gráfico de valor */}
+                        <div className="graph-box p-4 mb-5 shadow-inner">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <span className="small text-amara-muted fw-bold text-uppercase letter-spacing-1">Balioaren Estimazioa</span>
+                                <Badge bg="success" className="px-2 py-1">+12.4%</Badge>
+                            </div>
+                            <svg viewBox="0 0 500 100" className="w-100" style={{ height: '80px', filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.3))' }}>
+                                <path 
+                                    d="M0,80 Q50,20 100,70 T200,40 T300,60 T400,20 T500,50" 
+                                    fill="none" 
+                                    stroke="#3b82f6" 
+                                    strokeWidth="4" 
+                                    strokeLinecap="round"
+                                />
                             </svg>
-                            <div className="position-absolute bottom-0 start-0 small text-muted">Jul 2021</div>
-                            <div className="position-absolute bottom-0 end-0 small text-muted">Ene 2026</div>
                         </div>
-                    </div>
-                </Col>
-            </Row>
 
-            {/* Fila de Precios PSA */}
-            <h4 className="fw-bold mb-3 text-start">Mercado de Precios</h4>
-            <Row className="g-0 border text-center">
-                {prices.length > 0 ? (
-                    prices.map((item, index) => (
-                        <Col key={index} className="border-end p-3 bg-white hover-shadow transition">
-                            <div className="fw-bold text-dark small">{item.grade}</div>
-                            <div className="fs-4 fw-black text-primary">${item.price}</div>
-                            <div className="very-small text-muted text-decoration-underline">volume: {item.volume}</div>
-                        </Col>
-                    ))
-                ) : (
-                    <Col className="p-3 text-muted italic">Ez dago preziorik eskuragarri une honetan.</Col>
-                )}
-                <Col 
-                    onClick={handleCollection} 
-                    className="bg-primary d-flex align-items-center justify-content-center text-white fs-2 cursor-pointer" 
-                    style={{ minHeight: '80px', borderLeft: '1px solid white' }}
-                    title="Gehitu bildumara"
-                >
-                    +
-                </Col>
-            </Row>
+                        {/* Acciones */}
+                        <div className="d-flex gap-3 mb-5">
+                            <Button 
+                                onClick={handleCollection} 
+                                disabled={isAdding}
+                                className="btn-yellow-amara flex-grow-1 py-3"
+                            >
+                                {isAdding ? <Spinner size="sm" /> : '+ BILDUMARA'}
+                            </Button>
+                        </div>
+
+                        {/* Precios PSA */}
+                        <h6 className="fw-black text-white text-uppercase mb-3 small letter-spacing-2">PSA Merkatu Prezioak</h6>
+                        <Row className="g-3">
+                            {card.psa_prices?.length > 0 ? (
+                                card.psa_prices.map((item, index) => (
+                                    <Col key={index} xs={6} sm={4}>
+                                        <div className="psa-price-card p-3 text-center">
+                                            <div className="text-yellow fw-black fs-6 italic">PSA {item.grade}</div>
+                                            <div className="fs-4 fw-black text-white">${item.price}</div>
+                                        </div>
+                                    </Col>
+                                ))
+                            ) : (
+                                <Col className="text-amara-muted small italic">Ez dago prezio daturik eskuragarri une honetan.</Col>
+                            )}
+                        </Row>
+                    </Col>
+                </Row>
+            </Card>
         </Container>
     );
 };

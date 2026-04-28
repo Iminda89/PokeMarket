@@ -1,45 +1,59 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import axios from 'axios';
 
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
-    // Al arrancar, intentamos leer si ya había un usuario guardado en el navegador
-    const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('user_session');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [user, setUser] = useState(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Esta función actualizará tanto el estado como el almacenamiento local
-    const handleSetUser = (data) => {
-        if (!data) {
-            localStorage.removeItem('user_session');
+    const checkSession = async () => {
+        try {
+            const response = await axios.get('/api/user/profile');
+            const userData = response.data.user || response.data;
+            
+            setUser(userData);
+            setIsAuthenticated(true);
+        } catch (error) {
+            console.warn("Sesioa ez da aurkitu");
             setUser(null);
-        } else {
-            setUser(prev => {
-                const updated = { ...prev, ...data };
-                localStorage.setItem('user_session', JSON.stringify(updated));
-                return updated;
-            });
+            setIsAuthenticated(false);
+        } finally {
+            setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetch('/user-data')
-            .then(res => res.ok ? res.json() : null)
-            .then(data => {
-                if (data) {
-                    handleSetUser(data); // Actualizamos con datos frescos del servidor
-                } else {
-                    handleSetUser(null); // Si no hay sesión, limpiamos
-                }
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, []);
+        checkSession();
+    }, []); 
+
+    const login = async (credentials) => {
+        try {
+            await axios.get('/sanctum/csrf-cookie');
+            await axios.post('/login', credentials);
+            await checkSession(); 
+            return true;
+        } catch (error) {
+            console.error("Error al iniciar sesión:", error);
+            throw error;
+        }
+    };
+
+    const logout = async () => {
+        try {
+            await axios.post('/logout');
+            setUser(null);
+            setIsAuthenticated(false);
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = '/';
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+        }
+    };
 
     return (
-        <UserContext.Provider value={{ user, setUser: handleSetUser, loading }}>
+        <UserContext.Provider value={{ user, setUser, isAuthenticated, loading, login, logout, checkSession }}>
             {children}
         </UserContext.Provider>
     );

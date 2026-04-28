@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useLocation } from 'react-router-dom'; // Necesario para leer la URL
+import { useLocation } from 'react-router-dom';
+import { Container, Row, Col, Card, Alert } from 'react-bootstrap';
 
 const Dashboard = () => {
     const [stats, setStats] = useState({ cards_count: 0, total_spent: 0, xp: 0 });
@@ -17,73 +18,110 @@ const Dashboard = () => {
         const queryParams = new URLSearchParams(location.search);
         if (queryParams.get('verified') === '1') {
             setShowBanner(true);
-            // El mensaje desaparece solo tras 6 segundos
             setTimeout(() => setShowBanner(false), 6000);
         }
     }, [location]);
 
     return (
-        <div className="container mt-5">
+        <Container className="py-5 text-white">
+            <style>{`
+                .dashboard-title { font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
+                .stat-card-amara { 
+                    background: #111; 
+                    border: 1px solid #222; 
+                    border-radius: 20px; 
+                    transition: 0.3s;
+                }
+                .stat-card-amara:hover { border-color: #facc15; transform: translateY(-5px); }
+                .text-yellow { color: #facc15 !important; }
+                .text-amara-muted { color: #aaaaaa !important; }
+                
+                /* Banner de verificación elegante */
+                .alert-verified {
+                    background: #1a1a1a;
+                    border: 1px solid #28a745;
+                    color: white;
+                    border-radius: 15px;
+                }
+            `}</style>
+
             {/* --- SECCIÓN DE NOTIFICACIÓN --- */}
             {showBanner && (
-                <div className="alert alert-success shadow-lg border-0 mb-4 animate__animated animate__fadeInDown" 
-                     style={{ borderRadius: '15px', background: '#d4edda', color: '#155724' }}>
-                    <div className="d-flex align-items-center">
-                        <span style={{ fontSize: '1.5rem', marginRight: '15px' }}>✅</span>
-                        <div>
-                            <h5 className="mb-0 fw-bold">Posta elektronikoa berretsia!</h5>
-                            <small>Zure kontua erabat aktibatuta dago orain.</small>
-                        </div>
+                <Alert className="alert-verified shadow-lg mb-5 d-flex align-items-center">
+                    <span className="fs-3 me-3">✅</span>
+                    <div>
+                        <h5 className="mb-0 fw-bold text-success text-uppercase fs-6">Posta elektronikoa berretsia!</h5>
+                        <small className="text-amara-muted">Zure kontua erabat aktibatuta dago orain. Ongi etorri, entrenatzaile.</small>
                     </div>
-                </div>
+                </Alert>
             )}
 
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2 className="fw-bold">Nire Dashboard-a</h2>
-                <span className="badge bg-dark px-3 py-2 text-uppercase" style={{ letterSpacing: '1px' }}>
-                    Entrenatzailea
+            <div className="d-flex justify-content-between align-items-end mb-5">
+                <div>
+                    <h2 className="dashboard-title fs-1 mb-0">NIRE <span className="text-yellow">DASHBOARD-A</span></h2>
+                    <p className="text-amara-muted mb-0 small">Zure jardueraren laburpen orokorra</p>
+                </div>
+                <span className="badge border border-secondary text-secondary px-3 py-2 text-uppercase fw-black italic" style={{ letterSpacing: '1px', fontSize: '0.7rem' }}>
+                    ENTRENATZAILEA
                 </span>
             </div>
 
-            <div className="row">
+            <Row className="g-4">
                 {/* Carta de XP */}
-                <div className="col-md-4">
-                    <div className="card text-white mb-3 shadow border-0" 
-                         style={{ background: 'linear-gradient(45deg, #3b4cca, #0a285f)', borderRadius: '15px' }}>
-                        <div className="card-body p-4">
-                            <h5 className="card-title opacity-75">Zure XP-a</h5>
-                            <p className="card-text display-6 fw-bold mb-0">{stats.xp} <small className="h6">XP</small></p>
-                        </div>
-                    </div>
-                </div>
+                <Col md={4}>
+                    <Card className="stat-card-amara p-4 h-100 shadow-lg">
+                        <Card.Body className="p-0">
+                            <h6 className="text-yellow fw-bold text-uppercase small mb-3">Zure XP-a</h6>
+                            <div className="d-flex align-items-baseline">
+                                <span className="display-5 fw-black text-white">{stats.xp}</span>
+                                <span className="ms-2 text-amara-muted fw-bold">XP</span>
+                            </div>
+                            <div className="mt-3 border-top border-dark pt-2">
+                                <small className="text-amara-muted">Maila igotzeko falta zaizuna</small>
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
 
                 {/* Carta de Cartas Compradas */}
-                <div className="col-md-4">
-                    <div className="card text-white mb-3 shadow border-0" 
-                         style={{ background: 'linear-gradient(45deg, #28a745, #1e7e34)', borderRadius: '15px' }}>
-                        <div className="card-body p-4">
-                            <h5 className="card-title opacity-75">Bildutako Kartak</h5>
-                            <p className="card-text display-6 fw-bold mb-0">{stats.cards_count}</p>
-                        </div>
-                    </div>
-                </div>
+                <Col md={4}>
+                    <Card className="stat-card-amara p-4 h-100 shadow-lg">
+                        <Card.Body className="p-0">
+                            <h6 className="text-yellow fw-bold text-uppercase small mb-3">Bildutako Kartak</h6>
+                            <div className="d-flex align-items-baseline">
+                                <span className="display-5 fw-black text-white">{stats.cards_count}</span>
+                                <span className="ms-2 text-amara-muted fw-bold">KARTA</span>
+                            </div>
+                            <div className="mt-3 border-top border-dark pt-2">
+                                <small className="text-amara-muted text-truncate d-block">Zure bilduma pribatua</small>
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
 
-                {/* Carta de Gasto Total (Opcional, la añado para rellenar el hueco) */}
-                <div className="col-md-4">
-                    <div className="card text-white mb-3 shadow border-0" 
-                         style={{ background: 'linear-gradient(45deg, #ffc107, #e0a800)', borderRadius: '15px' }}>
-                        <div className="card-body p-4 text-dark">
-                            <h5 className="card-title opacity-75 fw-bold">Guztira Gastatua</h5>
-                            <p className="card-text display-6 fw-bold mb-0">{stats.total_spent} <small className="h6">€</small></p>
-                        </div>
-                    </div>
-                </div>
+                {/* Carta de Gasto Total */}
+                <Col md={4}>
+                    <Card className="stat-card-amara p-4 h-100 shadow-lg">
+                        <Card.Body className="p-0">
+                            <h6 className="text-yellow fw-bold text-uppercase small mb-3">Guztira Gastatua</h6>
+                            <div className="d-flex align-items-baseline">
+                                <span className="display-5 fw-black text-white">{stats.total_spent}</span>
+                                <span className="ms-2 text-amara-muted fw-bold">€</span>
+                            </div>
+                            <div className="mt-3 border-top border-dark pt-2">
+                                <small className="text-amara-muted">Inbertsio totala merkatuan</small>
+                            </div>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
+            
+            <hr className="my-5 border-secondary opacity-10" />
+            
+            <div className="text-center py-4">
+                <p className="text-amara-muted small italic">Azken mugimenduak ikusteko, joan zure profilera.</p>
             </div>
-            
-            <hr className="my-5 opacity-25" />
-            
-            {/* Aquí podrías poner una lista de sus últimas cartas compradas */}
-        </div>
+        </Container>
     );
 };
 

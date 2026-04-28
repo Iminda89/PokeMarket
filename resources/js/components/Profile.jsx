@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Image, Alert, ProgressBar, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Row, Col, Card, Button, Form, Image, Alert, ProgressBar, Badge, Spinner } from 'react-bootstrap';
 import { useUser } from './UserContext';
 import axios from 'axios';
+import { FaWallet, FaArrowLeft, FaSync, FaCamera, FaStore, FaCoins } from 'react-icons/fa';
 
 const Profile = () => {
-    const { user, setUser } = useUser();
+    const { user, setUser, loading } = useUser();
+    
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     
@@ -13,44 +15,51 @@ const Profile = () => {
     const [boughtCards, setBoughtCards] = useState([]); 
     const [activeListingsCount, setActiveListingsCount] = useState(0);
     const [totalCollectionValue, setTotalCollectionValue] = useState(0);
-    const [totalEarnings, setTotalEarnings] = useState(0); // Nuevo estado para ganancias
-    const [loadingData, setLoadingData] = useState(true);
+    const [totalEarnings, setTotalEarnings] = useState(0);
+    const [loadingData, setLoadingData] = useState(false);
 
     // Estados para la venta
     const [sellingCard, setSellingCard] = useState(null); 
     const [saleData, setSaleData] = useState({ price: '', psa: '' });
     const [saleStatus, setSaleStatus] = useState(null);
 
-    // 1. CARGAR DATOS
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
+        setLoadingData(true);
         try {
             const response = await axios.get('/api/user/collection');
-            
             setMyCards(response.data.cards || []);
             setTotalCollectionValue(response.data.total_value || 0); 
             setActiveListingsCount(response.data.active_listings || 0);
             setBoughtCards(response.data.bought_cards || []);
-            setTotalEarnings(response.data.total_earnings || 0); // Cargamos las ganancias
-
-            if (response.data.user) {
-                setUser(response.data.user);
-            }
+            setTotalEarnings(response.data.total_earnings || 0);
             
-            setLoadingData(false);
+            // Refrescar los datos del usuario (para el saldo)
+            const userRes = await axios.get('/api/user-check');
+            setUser(userRes.data);
         } catch (err) {
             console.error("Errorea datuak kargatzean:", err);
+        } finally {
             setLoadingData(false);
         }
-    };
+    }, [setUser]); 
 
     useEffect(() => {
-        loadData();
-    }, []);
+        if (!loading && user?.id) {
+            loadData();
+        }
+    }, [loading, user?.id, loadData]);
 
-    // 2. LÓGICA DE NIVELES
-    const xpMax = (user?.level || 1) * 100;
-    const currentXp = user?.xp || 0;
-    const progressXP = (currentXp / xpMax) * 100;
+    const handleLogout = async () => {
+        try {
+            await axios.post('/logout');
+        } catch (err) {
+            console.warn("Saioa itxia zegoen");
+        } finally {
+            if (setUser) setUser(null);
+            localStorage.removeItem('user_session');
+            window.location.href = "/";
+        }
+    };
 
     const handleConfirmSale = async () => {
         if (!saleData.price || saleData.price <= 0) {
@@ -74,178 +83,263 @@ const Profile = () => {
 
     const handleRemove = async (e, cardId) => {
         e.preventDefault(); e.stopPropagation();
-        if (!window.confirm("Ziur zaude?")) return;
+        if (!window.confirm("Ziur zaude bildumatik kendu nahi duzula?")) return;
         try {
             await axios.delete(`/api/user/collection/${cardId}`);
             loadData();
         } catch (error) { console.error(error); }
     };
 
-    const handleUpload = () => {
-        if (!selectedFile) return;
-        setUploading(true);
-        const formData = new FormData();
-        formData.append('avatar', selectedFile);
-        axios.post('/user/avatar', formData).then(response => {
-            setUser({...user, avatar_url: response.data.avatar_url});
-            setSelectedFile(null);
-        }).finally(() => setUploading(false));
-    };
+    const handleUpload = async () => {
+    if (!selectedFile) return;
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('avatar', selectedFile);
 
-    if (!user) return <Container className="py-5 text-center">Saioa hasi behar duzu.</Container>;
+    try {
+        // Asegúrate de enviar la cabecera adecuada para archivos
+        const response = await axios.post('/api/user/avatar', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            withCredentials: true, // Importante si usas Sanctum / sesiones
+        });
+
+        setUser({ ...user, avatar_url: response.data.avatar_url });
+        setSelectedFile(null);
+        alert("Irudia ondo igo da!");
+    } catch (error) {
+        console.error("Errorea irudia igotzean:", error);
+        alert(error.response?.data?.message || "Ezin izan da irudia igo.");
+    } finally {
+        setUploading(false);
+    }
+};
+
+    if (loading) return <div className="vh-100 d-flex justify-content-center align-items-center bg-dark text-white"><Spinner animation="grow" variant="warning" /></div>;
+    if (!user) return <Container className="py-5 text-center text-white">Saioa hasi behar duzu profil hau ikusteko.</Container>;
+
+    const xpMax = (user?.level || 1) * 100;
+    const progressXP = ((user?.xp || 0) / xpMax) * 100;
 
     return (
-        <Container className="py-5 text-start">
+        <Container className="py-4 font-custom text-white">
             <style>{`
-                .card-container { position: relative; border-radius: 8px; cursor: pointer; }
-                .remove-btn { position: absolute; top: -5px; left: -5px; z-index: 10; opacity: 0; transition: 0.2s; border-radius: 50%; }
-                .card-container:hover .remove-btn { opacity: 1; }
-                .card-hover:hover { transform: translateY(-3px); transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important; }
-                .selling-box { border: 2px dashed #198754; background-color: #f8fff9; }
-                .xp-bar { height: 12px; border-radius: 10px; background-color: #e9ecef; }
-                .stat-box { padding: 10px; border-radius: 8px; border: 1px solid #dee2e6; background-color: #f8f9fa; height: 100%; }
+                .profile-card { background: #0d0d0d; border: 1px solid #222; border-radius: 20px; }
+                .stat-box-amara { background: #151515; border: 1px solid #333; border-radius: 12px; padding: 15px; height: 100%; transition: 0.3s; }
+                .stat-box-amara:hover { border-color: #facc15; }
+                .xp-bar-amara { height: 10px; background: #222; border-radius: 10px; overflow: hidden; }
+                .card-item-amara { background: #151515; border-radius: 12px; padding: 10px; border: 1px solid #222; transition: 0.3s; position: relative; cursor: pointer; }
+                .card-item-amara:hover { border-color: #facc15; transform: translateY(-3px); }
+                .remove-badge { position: absolute; top: -5px; right: -5px; cursor: pointer; z-index: 10; font-size: 1.2rem; background: #dc3545 !important; color: white !important; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+                .btn-yellow-amara { background: #facc15 !important; color: black !important; font-weight: 900; border: none; border-radius: 10px; padding: 10px 20px; transition: 0.3s; }
+                .btn-yellow-amara:hover { background: #eab308 !important; transform: scale(1.02); }
+                .btn-dark-amara { background: #1a1a1a !important; border: 1px solid #333 !important; color: white !important; font-weight: 700; border-radius: 10px; }
+                .text-yellow { color: #facc15 !important; }
+                .text-amara-muted { color: #888888 !important; }
+                
+                .wallet-section {
+                    background: linear-gradient(135deg, #1a1a1a 0%, #050505 100%);
+                    border: 1px solid #2ecc71;
+                    border-radius: 15px;
+                    padding: 20px;
+                    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.1);
+                }
+                .balance-display {
+                    color: #2ecc71;
+                    font-size: 2.2rem;
+                    font-weight: 900;
+                    font-family: 'monospace';
+                    text-shadow: 0 0 10px rgba(46, 204, 113, 0.2);
+                }
             `}</style>
 
+            {/* HEADER */}
+            <div className="d-flex justify-content-between align-items-center mb-5">
+                <div>
+                    <h1 className="fw-black text-uppercase fs-2 mb-0 italic">NIRE <span className="text-yellow">PROFILA</span></h1>
+                    <p className="text-amara-muted small mb-0 fw-bold">KUDEAKETA PANELA</p>
+                </div>
+                <div className="d-flex gap-2">
+                    <Button variant="outline-light" onClick={loadData} className="rounded-circle"><FaSync /></Button>
+                    <Button onClick={handleLogout} className="btn-yellow-amara d-flex align-items-center gap-2 shadow-sm">
+                        SAIOA ITXI
+                    </Button>
+                </div>
+            </div>
+
             <Row className="g-4">
-                <Col md={8}>
-                    {/* --- HEADER --- */}
-                    <Card className="shadow-sm p-4 mb-4 border-0">
-                        <div className="d-flex align-items-center gap-4 border-bottom pb-4 mb-4">
-                            <Image src={user.avatar_url || '/default-avatar.png'} roundedCircle style={{ width: '100px', height: '100px', objectFit: 'cover' }} className="border shadow-sm" />
-                            <div className="flex-grow-1">
-                                <h2 className="fw-bold mb-1">{user.name}</h2>
-                                <p className="text-muted small mb-3">{user.email}</p>
+                <Col lg={8}>
+                    {/* INFO PRINCIPAL */}
+                    <Card className="profile-card p-4 mb-4 shadow-lg border-0">
+                        <Row className="align-items-center">
+                            <Col md={3} className="text-center">
+                                <div className="position-relative d-inline-block">
+                                    <Image src={user.avatar_url || '/default-avatar.png'} roundedCircle className="border border-dark shadow" style={{ width: '130px', height: '130px', objectFit: 'cover' }} />
+                                    <Badge bg="warning" text="dark" className="position-absolute bottom-0 end-0 rounded-circle p-2 border border-dark"><FaCamera /></Badge>
+                                </div>
+                            </Col>
+                            <Col md={9}>
+                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h3 className="fw-black mb-0 italic text-uppercase text-white">{user.name}</h3>
+                                        <p className="text-amara-muted small">{user.email}</p>
+                                    </div>
+                                    <Badge className="bg-primary px-3 py-2 fs-6">MAILA {user.level}</Badge>
+                                </div>
                                 
-                                <div className="d-flex align-items-center gap-3">
-                                    <Badge bg="primary" className="px-3 py-2 fs-6">Maila {user.level}</Badge>
-                                    <div className="flex-grow-1">
-                                        <div className="d-flex justify-content-between mb-1 small fw-bold text-muted">
-                                            <span>{currentXp} XP</span>
-                                            <span>{xpMax} XP</span>
-                                        </div>
-                                        <ProgressBar now={progressXP} variant="success" className="xp-bar" animated />
+                                <div className="mb-4">
+                                    <div className="d-flex justify-content-between small mb-1 fw-bold">
+                                        <span className="text-yellow">{user.xp} XP</span>
+                                        <span className="text-amara-muted">{xpMax} XP</span>
+                                    </div>
+                                    <div className="xp-bar-amara">
+                                        <div className="bg-warning h-100" style={{ width: `${progressXP}%`, transition: 'width 1s ease' }}></div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        {/* ESTADÍSTICAS ACTUALIZADAS (4 COLUMNAS) */}
-                        <Row className="text-center g-2">
-                            <Col xs={6} lg={3}>
-                                <div className="stat-box">
-                                    <h5 className="fw-bold text-primary mb-0">{myCards.length}</h5>
-                                    <div className="text-muted x-small fw-bold">Bilduma</div>
+                                {/* WALLET - SALDO DISPONIBLE */}
+                                <div className="wallet-section d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div className="text-amara-muted small fw-black text-uppercase mb-1">Dagoen Saldoa</div>
+                                        <div className="balance-display">
+                                            {Number(user.balance || 0).toLocaleString('de-DE', { minimumFractionDigits: 2 })}€
+                                        </div>
+                                    </div>
+                                    <FaWallet size={40} className="text-success opacity-50" />
                                 </div>
                             </Col>
-                            <Col xs={6} lg={3}>
-                                <div className="stat-box">
-                                    <h5 className="fw-bold text-success mb-0">{activeListingsCount}</h5>
-                                    <div className="text-muted x-small fw-bold">Salmentan</div>
+                        </Row>
+
+                        <Row className="mt-4 g-3 text-center">
+                            <Col xs={6} md={3}>
+                                <div className="stat-box-amara">
+                                    <div className="text-amara-muted small fw-bold text-uppercase mb-1">Bilduma</div>
+                                    <h4 className="fw-black mb-0">{myCards.length}</h4>
                                 </div>
                             </Col>
-                            <Col xs={6} lg={3}>
-                                <div className="stat-box">
-                                    <h5 className="fw-bold text-warning mb-0">{new Intl.NumberFormat('de-DE').format(totalCollectionValue)}€</h5>
-                                    <div className="text-muted x-small fw-bold">Balioa</div>
+                            <Col xs={6} md={3}>
+                                <div className="stat-box-amara">
+                                    <div className="text-amara-muted small fw-bold text-uppercase mb-1">Merkatuan</div>
+                                    <h4 className="fw-black mb-0 text-yellow">{activeListingsCount}</h4>
                                 </div>
                             </Col>
-                            <Col xs={6} lg={3}>
-                                <div className="stat-box" style={{backgroundColor: '#f0fff4', borderColor: '#c3e6cb'}}>
-                                    <h5 className="fw-bold text-success mb-0">{new Intl.NumberFormat('de-DE').format(totalEarnings)}€</h5>
-                                    <div className="text-dark x-small fw-bold">Irabaziak 💰</div>
+                            <Col xs={6} md={3}>
+                                <div className="stat-box-amara">
+                                    <div className="text-amara-muted small fw-bold text-uppercase mb-1">Balioa</div>
+                                    <h4 className="fw-black mb-0">{Number(totalCollectionValue).toFixed(0)}€</h4>
+                                </div>
+                            </Col>
+                            <Col xs={6} md={3}>
+                                <div className="stat-box-amara">
+                                    <div className="text-success small fw-bold text-uppercase mb-1">Irabaziak</div>
+                                    <h4 className="fw-black mb-0">+{Number(totalEarnings).toFixed(0)}€</h4>
                                 </div>
                             </Col>
                         </Row>
                     </Card>
 
-                    {/* --- HISTORIAL DE COMPRAS --- */}
-                    <Card className="shadow-sm p-4 border-0 mb-4">
-                        <h5 className="fw-bold mb-3">Erositako Kartak 📦</h5>
+                    {/* AZKEN EROSKETAK */}
+                    <Card className="profile-card p-4 mb-4 border-0">
+                        <h5 className="fw-black italic text-uppercase mb-4"><FaStore className="me-2 text-yellow"/> AZKEN EROSKETAK</h5>
                         {boughtCards.length > 0 ? (
-                            <Row className="g-2 overflow-auto flex-nowrap pb-2">
+                            <div className="d-flex gap-3 overflow-auto pb-3">
                                 {boughtCards.map(order => (
-                                    <Col key={order.id} xs={5} sm={4} md={3}>
-                                        <div className="p-2 border rounded bg-white h-100 card-hover text-center">
-                                            <Image src={order.card.image_url} fluid rounded className="mb-2" />
-                                            <div className="fw-bold x-small text-truncate">{order.card.name}</div>
-                                            <div className="d-flex justify-content-between mt-1">
-                                                <Badge bg="secondary" style={{fontSize: '9px'}}>{order.price}€</Badge>
-                                                <Badge bg="warning" text="dark" style={{fontSize: '9px'}}>PSA {order.psa_grade || 'Raw'}</Badge>
+                                    <div key={order.id} style={{minWidth: '140px'}} className="card-item-amara text-center">
+                                        {order.card?.image_url ? (
+                                            <Image src={order.card?.image_url} fluid rounded className="mb-2" style={{ maxHeight: '140px', objectFit: 'contain', width: '100%' }} />
+                                        ) : (
+                                            <div className="bg-secondary mb-2 d-flex align-items-center justify-content-center mx-auto" style={{ height: '140px', width: '100%', borderRadius: '8px' }}>
+                                                <span className="text-white small">Ez dago irudirik</span>
                                             </div>
-                                        </div>
-                                    </Col>
+                                        )}
+                                        <div className="fw-bold small text-truncate text-white">{order.card?.name}</div>
+                                        <div className="text-success fw-bold">{order.price}€</div>
+                                    </div>
                                 ))}
-                            </Row>
+                            </div>
                         ) : (
-                            <Alert variant="light" className="text-muted small border-0 p-0 text-start">Oraindik ez duzu kartarik erosi.</Alert>
+                            <p className="text-amara-muted italic small">Oraindik ez duzu ezer erosi merkatuan.</p>
                         )}
                     </Card>
 
-                    {/* --- VENTA --- */}
-                    <Card className={`shadow-sm p-4 border-0 mb-4 ${sellingCard ? 'selling-box' : ''}`}>
-                        <h5 className="fw-bold mb-3 text-start">Salmentan Jarri</h5>
-                        {saleStatus && <Alert variant={saleStatus.type} dismissible onClose={() => setSaleStatus(null)} className="small">{saleStatus.message}</Alert>}
-                        {sellingCard ? (
-                            <Row className="g-3 align-items-center">
-                                <Col xs={3}><Image src={sellingCard.image_url} fluid rounded className="shadow-sm" /></Col>
-                                <Col xs={9}>
-                                    <div className="d-flex gap-2 mb-2">
-                                        <Form.Control size="sm" type="number" placeholder="Prezioa (€)" onChange={(e) => setSaleData({...saleData, price: e.target.value})} />
-                                        <Form.Select size="sm" onChange={(e) => setSaleData({...saleData, psa: e.target.value})}>
-                                            <option value="">PSA gabe</option>
-                                            {[10,9,8,7,6].map(n => <option key={n} value={n}>PSA {n}</option>)}
-                                        </Form.Select>
-                                    </div>
-                                    <div className="d-flex gap-2">
-                                        <Button variant="success" size="sm" className="flex-grow-1" onClick={handleConfirmSale}>Dendara Igo</Button>
-                                        <Button variant="light" size="sm" onClick={() => setSellingCard(null)}>Utzi</Button>
-                                    </div>
-                                </Col>
+                    {/* NIRE BILDUMA (SALTZEKO) */}
+                    <Card className="profile-card p-4 mb-4 border-0">
+                        <h5 className="fw-black italic text-uppercase mb-4">NIRE <span className="text-yellow">BILDUMA</span></h5>
+                        {loadingData ? (
+                            <div className="text-center py-4"><Spinner animation="border" variant="warning" /></div>
+                        ) : (
+                            <Row className="g-3">
+                                {myCards.map(card => (
+                                    <Col key={card.id} xs={4} sm={3} md={2}>
+                                        <div className="card-item-amara" onClick={() => setSellingCard(card)}>
+                                            <div className="remove-badge" onClick={(e) => handleRemove(e, card.id)}>×</div>
+                                            {card.image_url ? (
+                                                <Image src={card.image_url} fluid rounded className="mb-2" style={{ maxHeight: '140px', objectFit: 'contain', width: '100%' }} />
+                                            ) : (
+                                                <div className="bg-secondary mb-2 d-flex align-items-center justify-content-center mx-auto" style={{ height: '140px', width: '100%', borderRadius: '8px' }}>
+                                                    <span className="text-white small">Ez dago irudirik</span>
+                                                </div>
+                                            )}
+                                            <div className="text-center text-yellow fw-bold" style={{fontSize: '0.6rem'}}>SALTZEKO SARTU</div>
+                                        </div>
+                                    </Col>
+                                ))}
+                                {myCards.length === 0 && <p className="text-amara-muted p-3">Ez duzu kartarik bilduman.</p>}
                             </Row>
-                        ) : <p className="text-muted small mb-0 italic text-start">Hautatu bildumako karta bat saltzeko.</p>}
-                    </Card>
-
-                    {/* --- MI COLECCIÓN --- */}
-                    <Card className="shadow-sm p-4 border-0">
-                        <h5 className="fw-bold mb-3 text-start">Nire Bilduma</h5>
-                        <Row className="g-2">
-                            {myCards.map(card => (
-                                <Col key={card.id} xs={4} sm={3} md={2}>
-                                    <div className="card-container" onClick={() => setSellingCard(card)}>
-                                        <Button variant="danger" size="sm" className="remove-btn" onClick={(e) => handleRemove(e, card.id)}>×</Button>
-                                        <Image src={card.image_url} fluid rounded className="card-hover border shadow-sm" />
-                                    </div>
-                                </Col>
-                            ))}
-                        </Row>
+                        )}
                     </Card>
                 </Col>
 
-                {/* --- LATERAL --- */}
-                <Col md={4}>
-                    <Card className="shadow-sm p-4 border-0 sticky-top" style={{top: '20px'}}>
-                        <h5 className="fw-bold mb-3 text-start">Ezarpenak</h5>
-                        <Form.Group className="mb-3 text-start">
-                            <Form.Label className="small fw-bold">Profil argazkia</Form.Label>
-                            <Form.Control type="file" size="sm" onChange={(e) => setSelectedFile(e.target.files[0])} />
-                            <Button variant="dark" size="sm" className="w-100 mt-2" onClick={handleUpload} disabled={!selectedFile || uploading}>
-                                {uploading ? 'Igotzen...' : 'Gorde Irudia'}
+                {/* COLUMNA DERECHA */}
+                <Col lg={4}>
+                    {/* FORMULARIO VENTA FLOTANTE */}
+                    {sellingCard && (
+                        <Card className="profile-card p-4 mb-4 border-warning shadow-lg">
+                            <h6 className="fw-black text-uppercase text-yellow mb-3">Salmentan Jarri</h6>
+                            <div className="text-center mb-3">
+                                {sellingCard.image_url ? (
+                                    <Image src={sellingCard.image_url} width={100} rounded className="shadow" />
+                                ) : (
+                                    <div className="bg-secondary d-flex align-items-center justify-content-center mx-auto mb-2" style={{ width: '100px', height: '100px', borderRadius: '50%' }}>
+                                        <span className="text-white small" style={{ fontSize: '0.65rem' }}>Ez dago irudirik</span>
+                                    </div>
+                                )}
+                                <div className="fw-bold mt-2">{sellingCard.name}</div>
+                            </div>
+                            <Form.Group className="mb-2">
+                                <Form.Label className="small text-amara-muted">Prezioa (€)</Form.Label>
+                                <Form.Control className="bg-dark text-white border-secondary" type="number" value={saleData.price} onChange={(e) => setSaleData({...saleData, price: e.target.value})} />
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label className="small text-amara-muted">PSA Graduazioa</Form.Label>
+                                <Form.Select className="bg-dark text-white border-secondary" value={saleData.psa} onChange={(e) => setSaleData({...saleData, psa: e.target.value})}>
+                                    <option value="">RAW (Graduatu gabe)</option>
+                                    {[10,9,8,7,6].map(n => <option key={n} value={n}>PSA {n}</option>)}
+                                </Form.Select>
+                            </Form.Group>
+                            <Button className="btn-yellow-amara w-100 mb-2" onClick={handleConfirmSale}>DENDARA IGO</Button>
+                            <Button variant="link" className="text-amara-muted w-100 btn-sm text-decoration-none" onClick={() => setSellingCard(null)}>Utzi</Button>
+                        </Card>
+                    )}
+
+                    <Card className="profile-card p-4 sticky-top" style={{top: '100px'}}>
+                        <h5 className="fw-black text-uppercase mb-4">EZARPENAK</h5>
+                        <Form.Group className="mb-4">
+                            <Form.Label className="small fw-bold text-amara-muted">ALDATU AVATARRA</Form.Label>
+                            <Form.Control type="file" size="sm" className="bg-dark text-white border-dark mb-2" onChange={(e) => setSelectedFile(e.target.files[0])} />
+                            <Button className="btn-dark-amara w-100" onClick={handleUpload} disabled={!selectedFile || uploading}>
+                                {uploading ? 'Igotzen...' : 'GORDE IRUDIA'}
                             </Button>
                         </Form.Group>
-                        <hr />
-                        <div className="small text-muted text-start">
-                            <div className="d-flex justify-content-between mb-2">
-                                <span>XP Irabazita:</span>
-                                <span className="fw-bold text-dark">{user.xp || 0}</span>
-                            </div>
-                            <div className="d-flex justify-content-between mb-2">
-                                <span>Erosketak:</span>
-                                <span className="fw-bold text-dark">{boughtCards.length}</span>
-                            </div>
-                            <div className="d-flex justify-content-between text-success fw-bold">
-                                <span>Guztira Irabazita:</span>
-                                <span>{totalEarnings}€</span>
-                            </div>
+                        <hr className="border-secondary opacity-25" />
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="text-amara-muted small">Erosketak guztira:</span>
+                            <span className="fw-bold">{boughtCards.length}</span>
+                        </div>
+                        <div className="d-flex justify-content-between mb-2">
+                            <span className="text-amara-muted small">Bildumaren balioa:</span>
+                            <span className="fw-bold text-yellow">{totalCollectionValue}€</span>
                         </div>
                     </Card>
                 </Col>

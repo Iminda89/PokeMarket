@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Hemos borrado la personalización de VerifyEmail porque 
+        // ya no vamos a obligar a los usuarios a verificar su correo.
     }
 }

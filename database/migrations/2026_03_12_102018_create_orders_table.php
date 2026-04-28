@@ -13,20 +13,18 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            // El que compra
             $table->foreignId('buyer_id')->constrained('users')->onDelete('cascade');
-            // El que vende
             $table->foreignId('seller_id')->constrained('users')->onDelete('cascade');
-            // La carta comprada
             $table->foreignId('card_id')->constrained('cards');
-            
             $table->decimal('price', 10, 2);
-            $table->integer('psa_grade')->nullable();
-            $table->integer('xp_gained'); // Guardamos cuánta XP dio esta compra
+            
+            // CORRECCIÓN: Debe ser string para aceptar lo que viene de listings
+            $table->string('psa_grade')->nullable(); 
+            
+            $table->integer('xp_gained')->default(0); 
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */

@@ -1,0 +1,68 @@
+/* resources/views/vendor/mail/html/themes/default.css */
+
+body,
+body *:not(html):not(style):not(br):not(tr):not(code) {
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+}
+
+body {
+    background-color: #f4f4f7;
+    color: #51545e;
+    height: 100%;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
+    width: 100% !important;
+}
+
+.wrapper {
+    background-color: #f4f4f7;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+
+.inner-body {
+    background-color: #ffffff;
+    border: 2px solid #ffde00; /* Borde amarillo estilo Pikachu */
+    border-radius: 8px;
+    margin: 0 auto;
+    padding: 0;
+    width: 570px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* Header */
+.header {
+    padding: 25px 0;
+    text-align: center;
+}
+
+.header a {
+    color: #3b4cca;
+    font-size: 22px;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+/* Button - Blue PokeMarket */
+.button-primary {
+    background-color: #3b4cca;
+    border-bottom: 10px solid #3b4cca;
+    border-left: 20px solid #3b4cca;
+    border-right: 20px solid #3b4cca;
+    border-top: 10px solid #3b4cca;
+    border-radius: 5px;
+    color: #fff;
+    display: inline-block;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.footer p {
+    color: #b0adc5;
+    font-size: 12px;
+    text-align: center;
+}

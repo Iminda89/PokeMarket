@@ -2,101 +2,96 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// Ya no necesitamos MustVerifyEmail ni las clases de Mail
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Card;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Order;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable 
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    protected $fillable = [
+        protected $fillable = [
         'name',
         'email',
         'password',
+        'level',   // Añadir esto
+        'xp',      // Añadir esto
+        'balance', // Añadir esto
+        'role',
         'avatar_url',
-        'xp',    // Asegúrate de que esté aquí
-        'level', // Asegúrate de que esté aquí
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
+            // Mantenemos el cast por si la base de datos tiene la columna, pero no se usará obligatoriamente
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
 
     /**
-     * Erabiltzailearen karta bilduma.
+     * Relación con la colección de cartas.
      */
     public function cards()
     {
-        // Asegúrate de que la clase Card existe en App\Models\Card
         return $this->belongsToMany(Card::class, 'collections')
                     ->withPivot('quantity', 'is_for_sale')
                     ->withTimestamps();
     }
 
-  
+    /**
+     * Atributo dinámico para saber cuánto falta para el siguiente nivel.
+     */
     public function getXpNextLevelAttribute() {
-        // Fórmula: el nivel 1 pide 100, el 2 pide 200, el 3 pide 300... (puedes hacerla más difícil)
         return $this->level * 100; 
     }
 
+    /**
+     * Lógica para añadir experiencia y subir de nivel.
+     */
     public function addXp($amount) {
         $this->xp += $amount;
         
-        // Usamos un bucle por si gana tanta XP que sube varios niveles de golpe
-        // Nivel 1: pide 100xp, Nivel 2: pide 200xp, etc.
         while ($this->xp >= ($this->level * 100)) {
             $this->xp -= ($this->level * 100);
             $this->level += 1;
         }
 
-        return $this->save(); // Importante: devolvemos el resultado del guardado
+        return $this->update([
+            'xp' => $this->xp,
+            'level' => $this->level
+        ]);
     }
 
-    // Relación para que el perfil pueda leer las compras
+    /**
+     * Relación con los pedidos (como comprador).
+     */
     public function orders() {
         return $this->hasMany(Order::class, 'buyer_id');
     }
+
+    /**
+     * Accesor para la URL del avatar.
+     */
     public function getAvatarUrlAttribute($value)
     {
         if (!$value) {
-            return '/default-avatar.png'; // Ruta a tu imagen por defecto
+            return asset('images/default-avatar.png'); // Asegúrate de tener esta imagen
         }
-
-        // Si la URL ya empieza por http (ej. gravatar o imagen externa), la dejamos así
         if (str_starts_with($value, 'http')) {
             return $value;
         }
-
-        // Si es una ruta local de storage, generamos la URL pública
         return asset('storage/' . $value);
     }
+
+    // Hemos eliminado el método sendEmailVerificationNotification()
 }

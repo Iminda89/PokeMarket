@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('listings', function (Blueprint $table) { // <--- Mira aquí
+        Schema::create('listings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('card_id')->constrained()->onDelete('cascade');
             $table->decimal('price', 10, 2);
-            $table->string('psa_grade')->nullable();
+            $table->string('psa_grade')->nullable(); // Mantenemos STRING
             $table->boolean('is_sold')->default(false);
             $table->timestamps();
         });
