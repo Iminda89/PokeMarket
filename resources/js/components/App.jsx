@@ -94,8 +94,12 @@ function AppContent() {
                                 </Button>
                             </div>
                         ) : (
-                            <div className="d-none d-lg-flex gap-3">
-                                <Link to="/login" className="btn-yellow-amara text-decoration-none">HASI SAIOA</Link>
+                            // Call to action de registro añadido sin romper nada
+                            <div className="d-none d-lg-flex align-items-center gap-3">
+                                <Link to="/login" className="text-white text-decoration-none px-2">HASI SAIOA</Link>
+                                <Link to="/register" className="btn-yellow-amara text-decoration-none px-3 py-2 rounded-pill fw-bold">
+                                    ERREGISTRATU
+                                </Link>
                             </div>
                         )}
 
@@ -158,9 +162,23 @@ function AppContent() {
                                 </Button>
                             </>
                         ) : (
-                            <Link to="/login" onClick={handleCloseOffcanvas} className="btn-yellow-amara text-center justify-content-center text-decoration-none">
-                                HASI SAIOA
-                            </Link>
+                            // Enlaces en el menú móvil (Offcanvas)
+                            <div className="d-flex flex-column gap-3">
+                                <Link 
+                                    to="/login" 
+                                    onClick={handleCloseOffcanvas} 
+                                    className="btn btn-outline-light text-white w-100 py-3 text-center text-decoration-none"
+                                >
+                                    HASI SAIOA
+                                </Link>
+                                <Link 
+                                    to="/register" 
+                                    onClick={handleCloseOffcanvas} 
+                                    className="btn-yellow-amara text-center w-100 py-3 fw-bold text-decoration-none rounded"
+                                >
+                                    ERREGISTRATU
+                                </Link>
+                            </div>
                         )}
                     </div>
                 </Offcanvas.Body>

@@ -91,4 +91,36 @@ class UserController extends Controller
             'active_listings' => $activeListings,
         ]);
     }
+
+    /**
+     * Eguneratu erabiltzailearen izena eta posta elektronikoa.
+     */
+    public function update(Request $request)
+    {
+        $user = $request->user();
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
+        return response()->json([
+            'message' => 'Datuak ondo gorde dira.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'balance' => (float) $user->balance,
+                'avatar_url' => $user->avatar_url,
+                'level' => $user->level,
+                'xp' => $user->xp,
+                'xp_next_level' => $user->xp_next_level,
+            ]
+        ]);
+    }
 }

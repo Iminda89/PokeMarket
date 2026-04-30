@@ -30,6 +30,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Perfil y Datos
     Route::get('/user/profile', [UserController::class, 'getUserProfile']);
+    Route::put('/user/profile', [UserController::class, 'update']); // <-- AÑADE ESTA LÍNEA
     Route::post('/user/avatar', [UserController::class, 'updateAvatar']);
 
     // Mercado

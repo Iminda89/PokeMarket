@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Button, Form, Image, Alert, ProgressBar, Badge, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Form, Image, Alert, ProgressBar, Badge, Spinner, Modal } from 'react-bootstrap';
 import { useUser } from './UserContext';
 import axios from 'axios';
 import { FaWallet, FaArrowLeft, FaSync, FaCamera, FaStore, FaCoins } from 'react-icons/fa';
@@ -23,6 +23,12 @@ const Profile = () => {
     const [saleData, setSaleData] = useState({ price: '', psa: '' });
     const [saleStatus, setSaleStatus] = useState(null);
 
+    // NUEVOS ESTADOS: Edición y eliminación de usuario
+    const [editData, setEditData] = useState({ name: '', email: '' });
+    const [profileMessage, setProfileMessage] = useState('');
+    const [profileError, setProfileError] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const loadData = useCallback(async () => {
         setLoadingData(true);
         try {
@@ -35,7 +41,7 @@ const Profile = () => {
             
             // Refrescar los datos del usuario (para el saldo)
             const userRes = await axios.get('/api/user-check');
-            setUser(userRes.data);
+            setUser(userRes.data); // <-- CORREGIDO AQUÍ
         } catch (err) {
             console.error("Errorea datuak kargatzean:", err);
         } finally {
@@ -46,6 +52,10 @@ const Profile = () => {
     useEffect(() => {
         if (!loading && user?.id) {
             loadData();
+            setEditData({
+                name: user.name || '',
+                email: user.email || ''
+            });
         }
     }, [loading, user?.id, loadData]);
 
@@ -91,30 +101,61 @@ const Profile = () => {
     };
 
     const handleUpload = async () => {
-    if (!selectedFile) return;
-    setUploading(true);
-    const formData = new FormData();
-    formData.append('avatar', selectedFile);
+        if (!selectedFile) return;
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('avatar', selectedFile);
 
-    try {
-        // Asegúrate de enviar la cabecera adecuada para archivos
-        const response = await axios.post('/api/user/avatar', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-            withCredentials: true, // Importante si usas Sanctum / sesiones
-        });
+        try {
+            const response = await axios.post('/api/user/avatar', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+                withCredentials: true,
+            });
 
-        setUser({ ...user, avatar_url: response.data.avatar_url });
-        setSelectedFile(null);
-        alert("Irudia ondo igo da!");
-    } catch (error) {
-        console.error("Errorea irudia igotzean:", error);
-        alert(error.response?.data?.message || "Ezin izan da irudia igo.");
-    } finally {
-        setUploading(false);
-    }
-};
+            setUser({ ...user, avatar_url: response.data.avatar_url });
+            setSelectedFile(null);
+            alert("Irudia ondo igo da!");
+        } catch (error) {
+            console.error("Errorea irudia igotzean:", error);
+            alert(error.response?.data?.message || "Ezin izan da irudia igo.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // FUNCIONES DE EDICIÓN Y ELIMINACIÓN DE PERFIL
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        setProfileMessage('');
+        setProfileError('');
+
+        try {
+            const response = await axios.put('/api/user/profile', editData);
+            if (response.data) {
+                setUser(response.data.user || response.data);
+            }
+            setProfileMessage('Datuak ondo gorde dira.');
+        } catch (err) {
+            console.error('Errorea datuak eguneratzean:', err);
+            setProfileError(err.response?.data?.message || 'Ezin izan dira datuak eguneratu.');
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        try {
+            await axios.delete('/api/user/profile');
+            if (setUser) setUser(null);
+            localStorage.removeItem('user_session');
+            window.location.href = "/";
+        } catch (err) {
+            console.error('Errorea kontua ezabatzean:', err);
+            setProfileError('Ezin izan da kontua ezabatu.');
+        } finally {
+            setShowDeleteModal(false);
+        }
+    };
 
     if (loading) return <div className="vh-100 d-flex justify-content-center align-items-center bg-dark text-white"><Spinner animation="grow" variant="warning" /></div>;
     if (!user) return <Container className="py-5 text-center text-white">Saioa hasi behar duzu profil hau ikusteko.</Container>;
@@ -323,27 +364,90 @@ const Profile = () => {
                         </Card>
                     )}
 
-                    <Card className="profile-card p-4 sticky-top" style={{top: '100px'}}>
+                    {/* EZARPENAK */}
+                    <Card className="profile-card p-4 sticky-top mb-4" style={{top: '100px'}}>
                         <h5 className="fw-black text-uppercase mb-4">EZARPENAK</h5>
-                        <Form.Group className="mb-4">
+
+                        {/* Avisos de perfil */}
+                        {profileMessage && <Alert variant="success" className="bg-success text-white border-0 py-2 small">{profileMessage}</Alert>}
+                        {profileError && <Alert variant="danger" className="bg-danger text-white border-0 py-2 small">{profileError}</Alert>}
+
+                        <Form.Group className="mb-3">
                             <Form.Label className="small fw-bold text-amara-muted">ALDATU AVATARRA</Form.Label>
                             <Form.Control type="file" size="sm" className="bg-dark text-white border-dark mb-2" onChange={(e) => setSelectedFile(e.target.files[0])} />
                             <Button className="btn-dark-amara w-100" onClick={handleUpload} disabled={!selectedFile || uploading}>
                                 {uploading ? 'Igotzen...' : 'GORDE IRUDIA'}
                             </Button>
                         </Form.Group>
+
                         <hr className="border-secondary opacity-25" />
+
+                        {/* EDICIÓN DE PERFIL */}
+                        <Form onSubmit={handleUpdateProfile}>
+                            <Form.Group className="mb-2 text-start">
+                                <Form.Label className="small fw-bold text-amara-muted">Izena</Form.Label>
+                                <Form.Control 
+                                    type="text" 
+                                    value={editData.name}
+                                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                                    className="bg-dark text-white border-secondary mb-2" 
+                                    required
+                                />
+                            </Form.Group>
+                            <Form.Group className="mb-3 text-start">
+                                <Form.Label className="small fw-bold text-amara-muted">Posta elektronikoa</Form.Label>
+                                <Form.Control 
+                                    type="email" 
+                                    value={editData.email}
+                                    onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                                    className="bg-dark text-white border-secondary mb-3" 
+                                    required
+                                />
+                            </Form.Group>
+                            <Button type="submit" className="btn-yellow-amara w-100 fw-black py-2 mb-4 text-uppercase shadow-sm">
+                                Gorde aldaketak
+                            </Button>
+                        </Form>
+
                         <div className="d-flex justify-content-between mb-2">
                             <span className="text-amara-muted small">Erosketak guztira:</span>
                             <span className="fw-bold">{boughtCards.length}</span>
                         </div>
-                        <div className="d-flex justify-content-between mb-2">
+                        <div className="d-flex justify-content-between mb-3">
                             <span className="text-amara-muted small">Bildumaren balioa:</span>
                             <span className="fw-bold text-yellow">{totalCollectionValue}€</span>
                         </div>
+
+                        <Button 
+                            variant="outline-danger" 
+                            className="w-100 fw-bold py-2 mt-2"
+                            onClick={() => setShowDeleteModal(true)}
+                        >
+                            Kontua ezabatu
+                        </Button>
                     </Card>
                 </Col>
             </Row>
+
+            {/* Modal de confirmación de eliminación */}
+            <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+                <Modal.Header closeButton className="bg-dark text-white border-0">
+                    <Modal.Title className="text-danger fw-black text-uppercase">
+                        Kontua ezabatu? ⚠️
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    Ziur zaude zure kontua ezabatu nahi duzula? Ekintza hau ezin da desegin eta zure datu guztiak galduko dira.
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-0">
+                    <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+                        Utzi
+                    </Button>
+                    <Button variant="danger" onClick={handleDeleteAccount}>
+                        Bai, ezabatu
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };

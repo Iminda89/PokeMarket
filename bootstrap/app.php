@@ -49,6 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/admin/sets/*',
             'api/cards/*/collection',
             'api/user/avatar',
+            'api/user/profile',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

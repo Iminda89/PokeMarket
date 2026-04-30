@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Form, Button, Card, Container, Alert } from 'react-bootstrap';
+import { Form, Button, Card, Container, Alert, Modal } from 'react-bootstrap';
 import axios from 'axios'; 
 import { useUser } from './UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +89,7 @@ export const RegisterForm = () => {
     });
     
     const [error, setError] = useState("");
+    const [showModal, setShowModal] = useState(false);
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -102,19 +103,33 @@ export const RegisterForm = () => {
         e.preventDefault();
         setError("");
         
+        // 1. VALIDACIÓN EN EL CLIENTE
+        if (formData.password.length < 8) {
+            setError('La contraseña debe tener al menos 8 caracteres.');
+            return;
+        }
+
+        if (formData.password !== formData.password_confirmation) {
+            setError('Las contraseñas no coinciden.');
+            return;
+        }
+
         try {
             await axios.get('/sanctum/csrf-cookie');
             const response = await axios.post('/register', formData);
             
             if (response.status === 201 || response.status === 200) {
-                alert("Kontua sortua! Orain hasi saioa.");
-                navigate("/login");
+                // Mostramos el modal
+                setShowModal(true);
             }
         } catch (err) {
             console.error("Registro error:", err);
+            
+            // 2. TRATAMIENTO DE ERRORES DEL SERVIDOR (código 422 o similares)
             if (err.response?.status === 419) {
                 setError("Tokena iraungi da. Freskatu orrialdea.");
             } else if (err.response?.data?.errors) {
+                // Extraemos el primer error del objeto devuelto por Laravel
                 const messages = Object.values(err.response.data.errors).flat();
                 setError(messages[0]); 
             } else {
@@ -176,6 +191,23 @@ export const RegisterForm = () => {
                     </Button>
                 </Form>
             </Card>
+
+            {/* Modal para confirmación */}
+            <Modal show={showModal} onHide={() => navigate("/login")} centered>
+                <Modal.Header closeButton className="bg-dark text-white border-0">
+                    <Modal.Title className="text-success fw-black text-uppercase">
+                        Erregistro arrakastatsua! 🎉
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    Zure kontua ondo sortu da. Mesedez, egiaztatu zure posta elektronikoa (eta SPAM karpeta) saioa hasi aurretik.
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-0">
+                    <Button variant="success" onClick={() => navigate("/login")}>
+                        Hasi saioa
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };
