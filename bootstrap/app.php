@@ -46,7 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/listings',
             'api/admin/users/*',
             'api/admin/cards',
-            'api/admin/sets',
+            'api/admin/sets/*',
             'api/cards/*/collection',
             'api/user/avatar',
         ]);

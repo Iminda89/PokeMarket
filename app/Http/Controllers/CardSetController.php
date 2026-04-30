@@ -7,10 +7,13 @@ use Illuminate\Http\Request;
 
 class CardSetController extends Controller
 {
-    // Listar todos los sets (para la pantalla principal de Colecciones)
+    // Listar solo los sets activos (para la pantalla principal de Colecciones)
     public function index()
     {
-        return response()->json(CardSet::all());
+        // Filtramos para que solo devuelva los sets que estén activos
+        $sets = CardSet::where('is_active', true)->get();
+
+        return response()->json($sets);
     }
 
     // Listar las cartas de un set específico
