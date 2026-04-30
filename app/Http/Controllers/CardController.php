@@ -12,6 +12,18 @@ use Illuminate\Support\Facades\DB;
 
 class CardController extends Controller
 {
+    public function index()
+    {
+        try {
+            // Obtenemos todas las cartas junto con el set al que pertenecen
+            $cards = Card::with('cardSet')->get();
+            
+            return response()->json($cards);
+        } catch (\Exception $e) {
+            \Log::error('Errorea kartak kargatzean: ' . $e->getMessage());
+            return response()->json(['error' => 'Errorea gertatu da zerbitzarian.'], 500);
+        }
+    }
     // Muestra la carta individual
     public function show($id)
     {

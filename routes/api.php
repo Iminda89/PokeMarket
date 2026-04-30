@@ -13,9 +13,7 @@ use App\Http\Controllers\AdminController;
 |--------------------------------------------------------------------------
 */
 
-
 // --- 1. RUTA DE VERIFICACIÓN (Protegida) ---
-// Es mejor que esté aquí para que Sanctum intente leer la cookie.
 Route::middleware('auth:sanctum')->get('/user-check', [UserController::class, 'getUserProfile']);
 
 // --- 2. RUTAS PÚBLICAS (Catálogo) ---
@@ -30,12 +28,14 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Perfil y Datos
     Route::get('/user/profile', [UserController::class, 'getUserProfile']);
-    Route::put('/user/profile', [UserController::class, 'update']); // <-- AÑADE ESTA LÍNEA
+    Route::put('/user/profile', [UserController::class, 'update']);
     Route::post('/user/avatar', [UserController::class, 'updateAvatar']);
 
-    // Mercado
+    // Mercado (CRUD de Listings)
+    Route::post('/listings', [ListingController::class, 'store']); // Create
+    Route::put('/listings/{id}', [ListingController::class, 'update']); // Update
+    Route::delete('/listings/{id}', [ListingController::class, 'destroy']); // Delete (Cancela anuncio y devuelve carta)
     Route::post('/listings/{id}/buy', [ListingController::class, 'buyCard']);
-    Route::post('/listings', [ListingController::class, 'store']);
 
     // Inventario
     Route::get('/user/collection', [CardController::class, 'getUserCollection']);
@@ -52,10 +52,13 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
     // Gestión de Sets
     Route::get('/sets', [AdminController::class, 'listSets']);
-    Route::post('/sets', [App\Http\Controllers\AdminController::class, 'storeSet']); // <-- NUEVO: Crear Set
+    Route::post('/sets', [AdminController::class, 'storeSet']); // Create Set
+    Route::put('/sets/{id}', [AdminController::class, 'updateSet']); // Update Set
+    Route::delete('/sets/{id}', [AdminController::class, 'destroySet']); // Delete Set
     Route::patch('/sets/{id}/toggle', [AdminController::class, 'toggleSetStatus']);
     
     // Gestión de Cartas
-    Route::post('/cards', [App\Http\Controllers\AdminController::class, 'storeCard']); // <-- NUEVO: Crear Carta
-    
-}); // <-- Asegúrate de que este punto y coma final esté ahí
+    Route::post('/cards', [AdminController::class, 'storeCard']); // Create Card
+    Route::put('/cards/{id}', [AdminController::class, 'updateCard']); // Update Card
+    Route::delete('/cards/{id}', [AdminController::class, 'destroyCard']); // Delete Card
+});

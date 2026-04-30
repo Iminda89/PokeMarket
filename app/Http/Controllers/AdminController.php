@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\User;
@@ -83,6 +84,42 @@ class AdminController extends Controller
     }
 
     /**
+     * Modificar un set existente.
+     */
+    public function updateSet(Request $request, $id)
+    {
+        $set = CardSet::findOrFail($id);
+        
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'is_active' => 'sometimes|boolean'
+        ]);
+
+        $set->update($request->only(['name', 'description', 'is_active']));
+
+        return response()->json([
+            'message' => 'Bilduma ondo eguneratu da.',
+            'set' => $set
+        ]);
+    }
+
+    /**
+     * Eliminar un set existente.
+     */
+    public function destroySet($id)
+    {
+        $set = CardSet::findOrFail($id);
+        
+        if ($set->cards()->count() > 0) {
+            return response()->json(['message' => 'Ezin da bilduma hau ezabatu, karta batzuk baditu.'], 400);
+        }
+
+        $set->delete();
+        return response()->json(['message' => 'Bilduma ondo ezabatu da.']);
+    }
+
+    /**
      * Crear una nueva carta.
      */
     public function storeCard(Request $request)
@@ -111,5 +148,52 @@ class AdminController extends Controller
             'message' => 'Karta sortu da.',
             'card' => $card
         ], 201);
+    }
+
+   /**
+     * Actualizar una carta existente.
+     */
+    public function updateCard(Request $request, $id)
+    {
+        $card = Card::findOrFail($id);
+
+        $request->validate([
+            'card_set_id' => 'sometimes|exists:card_sets,id',
+            'name' => 'sometimes|string|max:255',
+            'number' => 'sometimes|string|max:50',
+            'type' => 'nullable|string|max:50',
+            'rarity' => 'nullable|string|max:50',
+            'price' => 'sometimes|numeric|min:0',
+            'image_url' => 'nullable|string',
+        ]);
+
+        $data = $request->only([
+            'card_set_id', 'name', 'number', 'type', 'rarity', 'price', 'image_url'
+        ]);
+
+        // Si el valor de image_url es nulo, lo reemplazamos por un string vacío
+        // para evitar el error de restricción de la base de datos.
+        if (is_null($data['image_url'])) {
+            $data['image_url'] = '';
+        }
+
+        $card->update($data);
+
+        return response()->json([
+            'message' => 'Karta ondo eguneratu da.',
+            'card' => $card
+        ]);
+    }
+    /**
+     * Eliminar una carta.
+     */
+    public function destroyCard($id)
+    {
+        $card = Card::findOrFail($id);
+        $card->delete();
+
+        return response()->json([
+            'message' => 'Karta ondo ezabatu da.'
+        ]);
     }
 }

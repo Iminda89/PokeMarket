@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Table, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Form, Button, Table, Alert, Modal } from 'react-bootstrap';
 import axios from 'axios';
-import { FaCheck, FaTimes } from 'react-icons/fa';
+import { FaCheck, FaTimes, FaEdit, FaTrash } from 'react-icons/fa';
 
 const AdminSets = () => {
     const [sets, setSets] = useState([]);
+    const [cards, setCards] = useState([]); // Nuevo estado para listar todas las cartas
     const [newSet, setNewSet] = useState({ name: '', description: '' });
     const [newCard, setNewCard] = useState({ 
         card_set_id: '', 
@@ -15,11 +16,29 @@ const AdminSets = () => {
         price: '', 
         image_url: '' 
     });
+
+    // Estados para los modales de edición
+    const [showSetModal, setShowSetModal] = useState(false);
+    const [editSet, setEditSet] = useState({ id: null, name: '', description: '', is_active: true });
+
+    const [showCardModal, setShowCardModal] = useState(false);
+    const [editCard, setEditCard] = useState({ 
+        id: null, 
+        card_set_id: '', 
+        name: '', 
+        number: '', 
+        type: '', 
+        rarity: '', 
+        price: '', 
+        image_url: '' 
+    });
+
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
         fetchSets();
+        fetchCards(); // Cargar cartas al iniciar
     }, []);
 
     const fetchSets = async () => {
@@ -28,6 +47,15 @@ const AdminSets = () => {
             setSets(response.data);
         } catch (err) {
             console.error("Errorea bildumak kargatzean:", err);
+        }
+    };
+
+    const fetchCards = async () => {
+        try {
+            const response = await axios.get('/api/cards'); // Endpoint público para obtener todas las cartas
+            setCards(response.data);
+        } catch (err) {
+            console.error("Errorea kartak kargatzean:", err);
         }
     };
 
@@ -52,7 +80,6 @@ const AdminSets = () => {
         try {
             const response = await axios.post('/api/admin/cards', newCard);
             setMessage(response.data.message);
-            // Reemplazamos el estado para que no queden campos como undefined
             setNewCard({ 
                 card_set_id: '', 
                 name: '', 
@@ -63,8 +90,65 @@ const AdminSets = () => {
                 image_url: '' 
             });
             fetchSets();
+            fetchCards();
         } catch (err) {
             setError(err.response?.data?.message || 'Ezin izan da karta sortu.');
+        }
+    };
+
+    // --- FUNCIONES DE MODIFICAR Y BORRAR (SETS) ---
+    const openSetModal = (set) => {
+        setEditSet(set);
+        setShowSetModal(true);
+    };
+
+    const handleUpdateSet = async () => {
+        try {
+            const response = await axios.put(`/api/admin/sets/${editSet.id}`, editSet);
+            setMessage(response.data.message);
+            setShowSetModal(false);
+            fetchSets();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Ezin izan da bilduma eguneratu.');
+        }
+    };
+
+    const handleDeleteSet = async (id) => {
+        if (!window.confirm('Ziur zaude bilduma hau ezabatu nahi duzula?')) return;
+        try {
+            const response = await axios.delete(`/api/admin/sets/${id}`);
+            setMessage(response.data.message);
+            fetchSets();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Ezin izan da bilduma ezabatu.');
+        }
+    };
+
+    // --- FUNCIONES DE MODIFICAR Y BORRAR (KARTAK) ---
+    const openCardModal = (card) => {
+        setEditCard(card);
+        setShowCardModal(true);
+    };
+
+    const handleUpdateCard = async () => {
+        try {
+            const response = await axios.put(`/api/admin/cards/${editCard.id}`, editCard);
+            setMessage(response.data.message);
+            setShowCardModal(false);
+            fetchCards();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Ezin izan da karta eguneratu.');
+        }
+    };
+
+    const handleDeleteCard = async (id) => {
+        if (!window.confirm('Ziur zaude karta hau ezabatu nahi duzula?')) return;
+        try {
+            const response = await axios.delete(`/api/admin/cards/${id}`);
+            setMessage(response.data.message);
+            fetchCards();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Ezin izan da karta ezabatu.');
         }
     };
 
@@ -136,7 +220,6 @@ const AdminSets = () => {
                                     ))}
                                 </Form.Select>
                             </Form.Group>
-
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold">Karta Izena</Form.Label>
                                 <Form.Control 
@@ -147,7 +230,6 @@ const AdminSets = () => {
                                     required 
                                 />
                             </Form.Group>
-
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold">Karta Zenbakia (Number)</Form.Label>
                                 <Form.Control 
@@ -159,7 +241,6 @@ const AdminSets = () => {
                                     required 
                                 />
                             </Form.Group>
-
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold">Mota (Type)</Form.Label>
                                 <Form.Control 
@@ -170,7 +251,6 @@ const AdminSets = () => {
                                     placeholder="Fire, Water..."
                                 />
                             </Form.Group>
-
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold">Arrandi/Rarity</Form.Label>
                                 <Form.Control 
@@ -181,7 +261,6 @@ const AdminSets = () => {
                                     placeholder="Common, Rare, Ultra Rare..."
                                 />
                             </Form.Group>
-
                             <Form.Group className="mb-3">
                                 <Form.Label className="small fw-bold">Prezioa (€)</Form.Label>
                                 <Form.Control 
@@ -193,7 +272,6 @@ const AdminSets = () => {
                                     required 
                                 />
                             </Form.Group>
-
                             <Form.Group className="mb-4">
                                 <Form.Label className="small fw-bold">Irudiaren URLa</Form.Label>
                                 <Form.Control 
@@ -204,7 +282,6 @@ const AdminSets = () => {
                                     placeholder="https://..."
                                 />
                             </Form.Group>
-                            
                             <Button type="submit" variant="success" className="w-100 fw-bold">
                                 Gehitu Karta
                             </Button>
@@ -241,6 +318,22 @@ const AdminSets = () => {
                                         </td>
                                         <td>
                                             <Button 
+                                                variant="outline-info" 
+                                                size="sm" 
+                                                className="me-2"
+                                                onClick={() => openSetModal(s)}
+                                            >
+                                                <FaEdit />
+                                            </Button>
+                                            <Button 
+                                                variant="outline-danger" 
+                                                size="sm" 
+                                                className="me-2"
+                                                onClick={() => handleDeleteSet(s.id)}
+                                            >
+                                                <FaTrash />
+                                            </Button>
+                                            <Button 
                                                 variant={s.is_active ? 'outline-danger' : 'outline-success'} 
                                                 size="sm" 
                                                 onClick={() => toggleSetStatus(s.id)}
@@ -255,6 +348,165 @@ const AdminSets = () => {
                     </div>
                 </Col>
             </Row>
+
+            {/* Listado de Cartas actuales */}
+            <Row className="mt-5">
+                <Col>
+                    <h4 className="fw-bold mb-3">Dauden Kartak</h4>
+                    <div className="table-responsive">
+                        <Table striped bordered hover variant="dark" className="align-middle">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Izena</th>
+                                    <th>Zenbakia</th>
+                                    <th>Mota</th>
+                                    <th>Arrarotasuna</th>
+                                    <th>Prezioa</th>
+                                    <th>Ekintzak</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cards.map((card, idx) => (
+                                    <tr key={card.id}>
+                                        <td>{idx + 1}</td>
+                                        <td>{card.name}</td>
+                                        <td>{card.number}</td>
+                                        <td>{card.type}</td>
+                                        <td>{card.rarity}</td>
+                                        <td>{card.price} €</td>
+                                        <td>
+                                            <Button 
+                                                variant="outline-info" 
+                                                size="sm" 
+                                                className="me-2"
+                                                onClick={() => openCardModal(card)}
+                                            >
+                                                <FaEdit />
+                                            </Button>
+                                            <Button 
+                                                variant="outline-danger" 
+                                                size="sm" 
+                                                onClick={() => handleDeleteCard(card.id)}
+                                            >
+                                                <FaTrash />
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
+                </Col>
+            </Row>
+
+            {/* Modal para Modificar Set */}
+            <Modal show={showSetModal} onHide={() => setShowSetModal(false)} variant="dark" data-bs-theme="dark">
+                <Modal.Header closeButton className="bg-dark text-white border-secondary">
+                    <Modal.Title>Eguneratu Bilduma</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    <Form.Group className="mb-3">
+                        <Form.Label>Izena</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editSet.name} 
+                            onChange={(e) => setEditSet({...editSet, name: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Deskribapena</Form.Label>
+                        <Form.Control 
+                            as="textarea" 
+                            rows={3} 
+                            className="bg-dark border-secondary text-white"
+                            value={editSet.description} 
+                            onChange={(e) => setEditSet({...editSet, description: e.target.value})} 
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-secondary">
+                    <Button variant="secondary" onClick={() => setShowSetModal(false)}>
+                        Itxi
+                    </Button>
+                    <Button variant="warning" className="text-dark fw-bold" onClick={handleUpdateSet}>
+                        Gorde Aldaketak
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Modal para Modificar Karta */}
+            <Modal show={showCardModal} onHide={() => setShowCardModal(false)} variant="dark" data-bs-theme="dark">
+                <Modal.Header closeButton className="bg-dark text-white border-secondary">
+                    <Modal.Title>Eguneratu Karta</Modal.Title>
+                </Modal.Header>
+                <Modal.Body className="bg-dark text-white">
+                    <Form.Group className="mb-3">
+                        <Form.Label>Karta Izena</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.name} 
+                            onChange={(e) => setEditCard({...editCard, name: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Zenbakia</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.number} 
+                            onChange={(e) => setEditCard({...editCard, number: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Mota</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.type || ''} 
+                            onChange={(e) => setEditCard({...editCard, type: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Arrarotasuna</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.rarity || ''} 
+                            onChange={(e) => setEditCard({...editCard, rarity: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Prezioa (€)</Form.Label>
+                        <Form.Control 
+                            type="number" 
+                            step="0.01"
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.price} 
+                            onChange={(e) => setEditCard({...editCard, price: e.target.value})} 
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>Irudiaren URLa</Form.Label>
+                        <Form.Control 
+                            type="text" 
+                            className="bg-dark border-secondary text-white"
+                            value={editCard.image_url || ''} 
+                            onChange={(e) => setEditCard({...editCard, image_url: e.target.value})} 
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer className="bg-dark border-secondary">
+                    <Button variant="secondary" onClick={() => setShowCardModal(false)}>
+                        Itxi
+                    </Button>
+                    <Button variant="success" className="fw-bold" onClick={handleUpdateCard}>
+                        Gorde Aldaketak
+                    </Button>
+                </Modal.Footer>
+            </Modal>
         </Container>
     );
 };

@@ -94,10 +94,19 @@ const Profile = () => {
     const handleRemove = async (e, cardId) => {
         e.preventDefault(); e.stopPropagation();
         if (!window.confirm("Ziur zaude bildumatik kendu nahi duzula?")) return;
+        
         try {
-            await axios.delete(`/api/user/collection/${cardId}`);
+            // 1. Pedimos a Sanctum que inicialice la cookie CSRF
+            await axios.get('http://localhost:8000/sanctum/csrf-cookie');
+            
+            // 2. Realizamos la petición DELETE
+            await axios.delete(`http://localhost:8000/api/user/collection/${cardId}`);
+            
+            // 3. Recargamos los datos
             loadData();
-        } catch (error) { console.error(error); }
+        } catch (error) { 
+            console.error("Errorea ezabatzean:", error); 
+        }
     };
 
     const handleUpload = async () => {

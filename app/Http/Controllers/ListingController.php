@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class ListingController extends Controller 
 {
     /**
-     * Muestra todas las cartas a la venta (El Mercado)
+     * Muestra todas las cartas a la venta (El Mercado - Read)
      */
     public function index()
     {
@@ -27,15 +27,13 @@ class ListingController extends Controller
     }
 
     /**
-     * Poner una carta a la venta (Crear anuncio)
+     * Poner una carta a la venta (Crear anuncio - Create)
      */
     public function store(Request $request)
     {
         $request->validate([
             'card_id' => 'required|exists:cards,id',
             'price' => 'required|numeric|min:0.5',
-            // Si envías "PSA 10" desde React, quita la validación 'integer' 
-            // o limpia el string antes de validar.
             'psa_grade' => 'nullable' 
         ]);
 
@@ -74,6 +72,71 @@ class ListingController extends Controller
             ]);
         });
     }
+
+    /**
+     * Modificar el precio o datos del anuncio (Update)
+     */
+    public function update(Request $request, $id)
+    {
+        $listing = Listing::findOrFail($id);
+
+        if ($listing->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Ez duzu baimenik hau aldatzeko'], 403);
+        }
+
+        $request->validate([
+            'price' => 'sometimes|numeric|min:0.5',
+            'psa_grade' => 'nullable'
+        ]);
+
+        $listing->update($request->only(['price', 'psa_grade']));
+
+        return response()->json([
+            'message' => 'Anuntzioa ondo aldatu da.',
+            'listing' => $listing
+        ]);
+    }
+
+    /**
+     * Eliminar/Cancelar el anuncio y devolver la carta al usuario (Delete)
+     */
+    public function destroy($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $listing = Listing::findOrFail($id);
+
+            if ($listing->user_id !== Auth::id()) {
+                return response()->json(['error' => 'Ez duzu baimenik hau ezabatzeko'], 403);
+            }
+
+            if ($listing->is_sold) {
+                return response()->json(['error' => 'Ezin da saldutako karta bat ezabatu'], 400);
+            }
+
+            // Devolvemos la carta a la colección del usuario
+            $user = Auth::user();
+            $existingInCollection = $user->cards()->where('card_id', $listing->card_id)->first();
+
+            if ($existingInCollection) {
+                $user->cards()->updateExistingPivot($listing->card_id, [
+                    'quantity' => $existingInCollection->pivot->quantity + 1
+                ]);
+            } else {
+                $user->cards()->attach($listing->card_id, [
+                    'quantity' => 1,
+                    'is_for_sale' => false 
+                ]);
+            }
+
+            // Eliminamos la publicación
+            $listing->delete();
+
+            return response()->json([
+                'message' => 'Anuntzioa bertan behera geratu da eta karta zure bildumara itzuli da.'
+            ]);
+        });
+    }
+
     /**
      * Ejecutar la compra de una carta
      */
@@ -82,7 +145,7 @@ class ListingController extends Controller
         return DB::transaction(function () use ($id) {
             $listing = Listing::findOrFail($id);
             $buyer = Auth::user(); 
-            $seller = $listing->user; // Necesitamos al vendedor para darle su dinero
+            $seller = $listing->user;
 
             if ($listing->is_sold) {
                 return response()->json(['error' => 'Karta hau jada salduta dago'], 400);
@@ -92,23 +155,19 @@ class ListingController extends Controller
                 return response()->json(['error' => 'Ezin duzu zure karta propioa erosi'], 400);
             }
 
-            // --- NUEVA LÓGICA DE DINERO ---
             if ($buyer->balance < $listing->price) {
                 return response()->json(['error' => 'Ez duzu nahiko diru erosketa hau egiteko'], 400);
             }
 
-            // Restamos al comprador y sumamos al vendedor
             $buyer->balance -= $listing->price;
             $seller->balance += $listing->price;
 
             $buyer->save();
             $seller->save();
-            // ------------------------------
 
             $gradeValue = (int) filter_var($listing->psa_grade, FILTER_SANITIZE_NUMBER_INT);
             $xpGained = ($gradeValue >= 9) ? 150 : (($gradeValue > 0) ? 50 : 10);
 
-            // 2. Crear el registro de la orden
             $order = Order::create([
                 'buyer_id'   => $buyer->id,
                 'seller_id'  => $listing->user_id,
@@ -118,7 +177,6 @@ class ListingController extends Controller
                 'xp_gained'  => $xpGained,
             ]);
 
-            // 3. Entregar la carta al comprador
             $existingInCollection = $buyer->cards()->where('card_id', $listing->card_id)->first(); 
             if ($existingInCollection) {
                 $buyer->cards()->updateExistingPivot($listing->card_id, [
@@ -131,8 +189,12 @@ class ListingController extends Controller
                 ]);
             }
 
-            // 4. Actualizar XP
-            $buyer->addXp($xpGained);
+            if (method_exists($buyer, 'addXp')) {
+                $buyer->addXp($xpGained);
+            } else {
+                $buyer->xp += $xpGained;
+                $buyer->save();
+            }
 
             $buyer->refresh(); 
             $listing->update(['is_sold' => true]);

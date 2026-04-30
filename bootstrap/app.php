@@ -45,11 +45,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/listings/*/buy',
             'api/listings',
             'api/admin/users/*',
-            'api/admin/cards',
+            'api/admin/cards/*',
             'api/admin/sets/*',
             'api/cards/*/collection',
             'api/user/avatar',
             'api/user/profile',
+            'api/user/collection/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
