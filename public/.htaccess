@@ -1,0 +1,18 @@
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indices
+    </IfModule>
+
+    RewriteEngine On
+
+    # Redirigir Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Si no es un directorio...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    # ...y no es un archivo físico (como una imagen o un .js)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    # Enviar todo al index.php de Laravel
+    RewriteRule ^ index.php [L]
+</IfModule>

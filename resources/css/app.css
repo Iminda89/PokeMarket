@@ -1,0 +1,194 @@
+/* ============================================================
+   ESTÉTICA "POKEMARKET AMARA" - CSS UNIFICADO
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700;900&display=swap');
+
+:root {
+    /* Paleta Amara */
+    --amara-black: #050505;
+    --amara-dark: #0d0d0d;
+    --amara-grey-card: #141414;
+    --amara-grey-border: #222222;
+    --amara-yellow: #facc15;
+    --amara-granate: #1a0505;
+    --amara-red-text: #ff4d4d;
+    
+    /* Animaciones */
+    --fade-speed: 0.5s;
+    --transition-smooth: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* --- Base Estilo Amara --- */
+body {
+    font-family: 'Space Grotesk', sans-serif;
+    background-color: var(--amara-black) !important;
+    color: white;
+    margin: 0;
+}
+
+.bg-pm-dark { 
+    background-color: var(--amara-black) !important; 
+}
+
+/* --- Tipografía y Títulos --- */
+.fw-black { font-weight: 900; }
+.italic { font-style: italic; }
+.text-yellow { color: var(--amara-yellow) !important; }
+.logo-text {
+    letter-spacing: -1.5px;
+    color: var(--amara-yellow) !important;
+    text-transform: uppercase;
+}
+
+/* --- Navegación (Estilo Referencia) --- */
+.nav-link-amara {
+    color: #888 !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 1.5px;
+    text-decoration: none;
+    transition: var(--transition-smooth);
+}
+
+.nav-link-amara:hover, .active-pm-link { 
+    color: white !important; 
+}
+
+.active-pm-link {
+    border-bottom: 2px solid var(--amara-yellow);
+}
+
+/* --- Botones Especiales (Como ayuda17.png) --- */
+.btn-yellow-amara, .btn-logout-amara {
+    background-color: var(--amara-yellow) !important;
+    color: black !important;
+    font-weight: 900;
+    padding: 10px 25px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-style: italic;
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    transition: transform 0.2s ease;
+}
+
+.btn-yellow-amara:hover {
+    transform: scale(1.05);
+}
+
+.btn-admin-pill {
+    border: 1px solid #400;
+    background: var(--amara-granate);
+    color: var(--amara-red-text);
+    padding: 6px 18px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.btn-admin-pill:hover {
+    background: #2d0a0a;
+    color: white;
+}
+
+/* --- Cards Estilo Dashboard (Referencia ayuda17.png) --- */
+.card {
+    background-color: var(--amara-grey-card) !important;
+    border: 1px solid var(--amara-grey-border) !important;
+    border-radius: 20px !important;
+    color: white !important;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    border-color: var(--amara-yellow) !important;
+}
+
+/* Botón KUDEATU / SARTU dentro de las cards */
+.btn-card-amara {
+    background-color: #262626;
+    border: none;
+    color: white;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 10px;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.btn-card-amara:hover {
+    background-color: var(--amara-yellow);
+    color: black;
+}
+
+/* --- Estilos para las Cartas Pokémon (Catálogo) --- */
+.card-pokemon {
+    background-color: var(--amara-grey-card) !important;
+    padding: 15px;
+}
+
+.card-pokemon img {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+}
+
+.card-pokemon:hover img {
+    transform: scale(1.1) rotate(2deg);
+}
+
+/* Etiquetas y Precios */
+.price-tag {
+    color: var(--amara-yellow);
+    font-size: 1.2rem;
+    font-weight: 900;
+    font-style: italic;
+}
+
+.very-small {
+    background: #333;
+    color: #ccc;
+    font-size: 0.6rem !important;
+    text-transform: uppercase;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+}
+
+/* --- Formularios y Filtros (Modo Oscuro) --- */
+.form-control, .form-select {
+    background-color: var(--amara-dark) !important;
+    border: 1px solid var(--amara-grey-border) !important;
+    color: white !important;
+    border-radius: 12px !important;
+}
+
+.form-control:focus {
+    border-color: var(--amara-yellow) !important;
+    box-shadow: none !important;
+}
+
+/* --- Animaciones de Compra/Eliminación --- */
+.fade-out-card {
+    transition: opacity var(--fade-speed) ease, transform var(--fade-speed) ease;
+}
+
+.fade-out-card.removing {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+    pointer-events: none;
+}
+
+/* Hamburguesa personalizada */
+.custom-toggler .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml;charset=utf8,%3Csvg viewBox='0 0 30 30' xmlns='http://www.w3.org/2000/svg'%3P%3Cpath stroke='white' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3P%3C/svg%3E") !important;
+}
+
+/* --- Scrollbar personalizada para que no rompa el look oscuro --- */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--amara-black); }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--amara-yellow); }
